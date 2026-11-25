@@ -179,7 +179,9 @@ function colorWithAlpha(color: string, alpha: number): string {
 }
 
 interface CatFxParticle {
-  kind: 'bang' | 'dust' | 'z';
+  kind: 'bang' | 'dust' | 'z' | 'note';
+  /** Music-note flavour: 0 = single note, 1 = double note */
+  variant?: number;
   x: number;
   y: number;
   vx: number;
@@ -190,7 +192,7 @@ interface CatFxParticle {
 }
 
 interface IdleFidget {
-  kind: 'tilt' | 'ear' | 'slowBlink' | 'look' | 'tail';
+  kind: 'tilt' | 'ear' | 'slowBlink' | 'look' | 'tail' | 'enjoy';
   t0: number;
   dur: number;
   side: -1 | 1;
@@ -212,6 +214,75 @@ const BODY_SLICES: Array<{ t: number; hw: number }> = [
   { t: 1.00, hw: 46 }, // cozy bottom rest
 ];
 
+// Round-cheek silhouette, only used by skins that opt in with faceShape: 'round'.
+const BODY_SLICES_ROUND: Array<{ t: number; hw: number }> = [
+  { t: 0.12, hw: 49 }, // forehead / ear base
+  { t: 0.18, hw: 55 }, // brow-to-cheek transition (keeps the jaw line convex)
+  { t: 0.24, hw: 61 }, // eye line, full round cheek
+  { t: 0.30, hw: 63.5 }, // chubby cheeks widest
+  { t: 0.36, hw: 60 }, // rounded jaw, gentler taper so the cheek stays a circle
+  { t: 0.40, hw: 57 }, // cheek-to-neck softening (no kink under the cheek)
+  { t: 0.42, hw: 55 }, // gentle neck indent
+  { t: 0.47, hw: 54 }, // upper chest
+  { t: 0.57, hw: 62 }, // mid chest
+  { t: 0.68, hw: 70 }, // plump belly
+  { t: 0.79, hw: 73 }, // widest soft thighs!
+  { t: 0.90, hw: 69 }, // lower thigh curve
+  { t: 0.97, hw: 58 }, // tapers softly inward at base!
+  { t: 1.00, hw: 46 }, // cozy bottom rest
+];
+
+// Optional 2D collar + dangling gold bell (mirrors the 3D collarColor setting so the
+// classic hand-drawn keyboard stays, but the neck accessory is a real attached shape
+// instead of a stack of body spots).
+export type PetCollarId = 'none' | 'red' | 'blue' | 'pink' | 'green';
+const COLLAR_2D_COLORS: Record<Exclude<PetCollarId, 'none'>, string> = {
+  red: '#6e2f21',
+  blue: '#2f4a6e',
+  pink: '#8a5266',
+  green: '#3c5a42',
+};
+// Neck indent of BODY_SLICES sits at t=0.38 (hw 52); shoulders are anchored at t=0.65,
+// so the strap stays well above where the paws can ever reach.
+const COLLAR_2D_NECK_T = 0.462;
+const COLLAR_2D_NECK_HW = 52.6;
+const COLLAR_2D_STRAP_RX = 49.4; // almost to the silhouette edge, so the band reads as wrapping around
+const COLLAR_2D_STRAP_SAG = 3.2; // gentle downward bow of the whole band
+const COLLAR_2D_STRAP_THICK = 3.4; // MAX width at the centre; the ribbon tapers to its ends
+const COLLAR_2D_BELL_GOLD = '#edb938';
+const COLLAR_2D_BELL_DARK = '#a87c1c';
+const COLLAR_2D_STRAP_LIFT = 2.6; // ends ride up: the strap goes AROUND the neck, not across it
+
+function collarHexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.slice(0, 2), 16) || 0,
+    parseInt(h.slice(2, 4), 16) || 0,
+    parseInt(h.slice(4, 6), 16) || 0,
+  ];
+}
+
+/** Shade a hex colour toward white/black and wrap it as rgba() in one step (never feed rgb() back in). */
+function collarShade(
+  hex: string,
+  toward: '#ffffff' | '#000000',
+  amount: number,
+  alpha: number,
+): string {
+  const [r, g, b] = collarHexToRgb(hex);
+  const dir = toward === '#ffffff' ? 255 : 0;
+  const k = Math.max(0, Math.min(1, amount));
+  const nr = Math.round(r + (dir - r) * k);
+  const ng = Math.round(g + (dir - g) * k);
+  const nb = Math.round(b + (dir - b) * k);
+  return `rgba(${nr}, ${ng}, ${nb}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
+function collarAlpha(hex: string, alpha: number): string {
+  const [r, g, b] = collarHexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+}
+
 const IDLE_RENDER_AFTER_MS = 3000;
 const IDLE_RENDER_PAUSE_MS = 40;
 const KEYBOARD_HIT_HALF_WIDTH_RATIO = 0.54;
@@ -232,6 +303,13 @@ export class KuroCatEngine {
   private lastActivityAt = 0;
   private lastTime = 0;
   private elapsed = 0;
+  private collar2d: PetCollarId = 'none';
+
+  /** The round-face skin ships with its own leather bell collar unless another colour is picked. */
+  private get wornCollar(): PetCollarId {
+    if (this.collar2d !== 'none') return this.collar2d;
+    return this.customSkin?.faceShape === 'round' ? 'red' : 'none';
+  }
 
   public showKeyBubbles = true;
   public privacyMode = false;
@@ -597,6 +675,32 @@ export class KuroCatEngine {
     this.wakeRendering();
   }
 
+  public setCollar(id: PetCollarId): void {
+    if (this.collar2d === id) return;
+    this.collar2d = id;
+    this.wakeRendering();
+  }
+
+  /** True while the user is listening to music -> floating note glyphs above the head. */
+  public setMusicPlaying(active: boolean): void {
+    const next = Boolean(active);
+    if (next !== this.musicPlaying) {
+      this.musicPlaying = next;
+      if (next) {
+        this.nextNoteAt = performance.now() + 260;
+        // Fresh random tempo each song, plus the first random groove gesture
+        this.musicBpm = 92 + Math.random() * 34;
+        this.musicBeatPhase = 0;
+        this.musicAct = null;
+        this.nextMusicActAt = performance.now() + 1500 + Math.random() * 1600;
+      } else {
+        this.musicAct = null;
+        this.nextMusicActAt = 0;
+      }
+      this.wakeRendering();
+    }
+  }
+
   public setHeadphones(active: boolean): void {
     const next = Boolean(active);
     if (next !== this.headphonesOn) {
@@ -729,6 +833,17 @@ export class KuroCatEngine {
   private deskHopSpring = new Spring(0, 9.2, 0.34);
   private headsetSpring = new Spring(0, 5.4, 0.70);
   private headphonesOn = false;
+  private musicPlaying = false;
+  private nextNoteAt = 0;
+  private noteSeq = 0;
+  private noteSpriteCache = new Map<number, HTMLCanvasElement>();
+  // Beat-synced groove while a song is playing: gentle nodding/sway plus random one-shot gestures
+  private musicGrooveSpring = new Spring(0, 1.7, 0.55);
+  private musicGroove = 0;
+  private musicBeatPhase = 0;
+  private musicBpm = 108;
+  private musicAct: IdleFidget | null = null;
+  private nextMusicActAt = 0;
 
   // Alive cat emotional state machine: curious (laser-pointer eyes), sleepy loaf (Zzz), idle fidgets, cross (airplane ears + tail desk-thump!)
   private lastInputAt = performance.now();
@@ -1807,7 +1922,8 @@ export class KuroCatEngine {
       !this.privacyMode &&
       this.petEnergy < 0.15 &&
       !this.isCross &&
-      !curiousNow
+      !curiousNow &&
+      this.musicGroove < 0.15
     ) {
       const kinds: IdleFidget['kind'][] = ['tilt', 'tilt', 'ear', 'slowBlink', 'look', 'tail'];
       const kind = kinds[Math.floor(Math.random() * kinds.length)];
@@ -1817,6 +1933,7 @@ export class KuroCatEngine {
         slowBlink: 1450,
         look: 2100,
         tail: 1100,
+        enjoy: 2600,
       };
       this.idleAct = {
         kind,
@@ -1827,7 +1944,47 @@ export class KuroCatEngine {
       this.nextIdleActAt = now + 3800 + Math.random() * 4800;
       this.wakeRendering(now);
     }
-    const act = this.idleAct;
+
+    // Music groove: headphones on + a song playing -> bop to a random tempo, plus random one-shot gestures
+    const musicGrooveTarget =
+      isCatMode &&
+      this.musicPlaying &&
+      this.headphonesOn &&
+      !this.asleep &&
+      !this.privacyMode &&
+      !this.isCross
+        ? 1
+        : 0;
+    this.musicGroove = Math.max(0, Math.min(1.2, this.musicGrooveSpring.step(musicGrooveTarget, dt)));
+    if (this.musicGroove > 0.02) {
+      this.musicBeatPhase += dt * (this.musicBpm / 60) * Math.PI * 2;
+      if (this.musicBeatPhase > Math.PI * 4) this.musicBeatPhase -= Math.PI * 4;
+    }
+    if (this.musicAct && now > this.musicAct.t0 + this.musicAct.dur) {
+      this.musicAct = null;
+    }
+    if (this.musicGroove > 0.6 && !this.musicAct && now >= this.nextMusicActAt) {
+      const kinds: IdleFidget['kind'][] = ['enjoy', 'enjoy', 'ear', 'slowBlink', 'look', 'tail', 'tilt'];
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      const durMap: Record<IdleFidget['kind'], number> = {
+        tilt: 1300,
+        ear: 420,
+        slowBlink: 1300,
+        look: 1600,
+        tail: 900,
+        enjoy: 2400 + Math.random() * 900,
+      };
+      this.musicAct = {
+        kind,
+        t0: now,
+        dur: durMap[kind],
+        side: Math.random() < 0.5 ? -1 : 1,
+      };
+      // Random breathing room between gestures so it never looks metronomic
+      this.nextMusicActAt = now + 2200 + Math.random() * 3000;
+      this.wakeRendering(now);
+    }
+    const act = this.musicAct ?? this.idleAct;
     const actU = act ? Math.max(0, Math.min(1, (now - act.t0) / act.dur)) : 0;
     const smoothstep = (a: number, b: number, x: number) => {
       const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
@@ -1875,6 +2032,8 @@ export class KuroCatEngine {
       const tailDir = Math.max(-1, Math.min(1, (this.catTail.tipX - this.catCenterX) / (this.kbWidth * 0.5)));
       targetLean = tailDir * 0.14 * this.catTail.reach;
     }
+    // Gentle weight shift from side to side while bopping to music
+    targetLean += this.musicGroove * Math.sin(this.musicBeatPhase * 0.5) * 0.055;
     this.spineLean = this.spineLeanSpring.step(targetLean, dt);
 
     // Stable neutral eye reference (no feedback wobble when spine leans toward the mouse!)
@@ -1891,13 +2050,26 @@ export class KuroCatEngine {
       wakeElapsed >= 0 && wakeElapsed < 0.55
         ? Math.sin(wakeElapsed * 36) * 0.18 * (1 - wakeElapsed / 0.55)
         : 0;
-    const fidgetTilt = act && act.kind === 'tilt' ? act.side * 0.19 * actEnv : 0;
+    const fidgetTilt =
+      act && act.kind === 'tilt' ? act.side * (act === this.musicAct ? 0.135 : 0.19) * actEnv : 0;
     // Continuous smooth head cock when curious (never snaps left/right across dx=0!)
     const curiousCock = curiousClamped * 0.16 * gx;
     const sleepTilt = this.sleepAmount * 0.08;
+    // Beat-synced nod + slow side-to-side bob while a song is playing
+    const beatSin = Math.sin(this.musicBeatPhase);
+    const beatHalf = Math.sin(this.musicBeatPhase * 0.5);
+    // Nod is the star of the show; it eases off against typing and melts into a soft
+    // rocking sway while the cat has its eyes shut enjoying the song.
+    const enjoyEnv = act && act.kind === 'enjoy' ? actEnv : 0;
+    const musicNodGain =
+      this.musicGroove * (1 - Math.min(1, this.typingHunch) * 0.55) * (1 - enjoyEnv * 0.45);
+    const musicTilt =
+      musicNodGain * (beatSin * 0.078 + beatHalf * 0.026) +
+      enjoyEnv * (act ? act.side * 0.042 : 0);
     const desiredHeadTilt =
       this.typingSway * 0.18 +
       this.typingHunch * (this.strikeRock * 0.065 - 0.02) +
+      musicTilt +
       this.spineLean * 0.085 +
       fidgetTilt +
       curiousCock +
@@ -2011,6 +2183,36 @@ export class KuroCatEngine {
       });
     }
 
+    // Floating music notes while the headphones are playing music.
+    // Two alternating lanes + a crowding guard keep glyphs from ever stacking on each other.
+    if (isCatMode && this.musicPlaying && this.sleepAmount < 0.5 && now >= this.nextNoteAt) {
+      const headPt = this.spinePoint(0.18, 0);
+      const lane = this.noteSeq % 2;
+      const noteX = headPt.x + 20 + lane * 25;
+      const noteY = headPt.y - 50 - lane * 5;
+      const crowded = this.fxParticles.some(
+        (p) => p.kind === 'note' && Math.abs(p.x - noteX) < 23 && Math.abs(p.y - noteY) < 22,
+      );
+      if (crowded) {
+        // wait a beat rather than spawning a second glyph on top of the first
+        this.nextNoteAt = now + 280;
+      } else {
+        this.nextNoteAt = now + 1020 + Math.random() * 260;
+        const seq = this.noteSeq++;
+        this.fxParticles.push({
+          kind: 'note',
+          x: noteX,
+          y: noteY,
+          vx: 3 + lane * 2 + Math.random() * 3,
+          vy: -15 - Math.random() * 3,
+          size: seq % 2 === 0 ? 1.0 : 1.12,
+          variant: seq % 2,
+          createdAt: now,
+          lifetime: 2200,
+        });
+      }
+    }
+
     // Update FX particles (impact starburst, dust puffs, sleep Zzz)
     for (let i = this.fxParticles.length - 1; i >= 0; i--) {
       const fx = this.fxParticles[i];
@@ -2032,7 +2234,10 @@ export class KuroCatEngine {
       (curiousNow ||
         this.crossAmount > 0.03 ||
         this.idleAct !== null ||
+        this.musicAct !== null ||
+        this.musicGroove > 0.05 ||
         this.fxParticles.some((fx) => fx.kind !== 'z') ||
+        this.musicPlaying ||
         (this.sleepAmount > 0.02 && this.sleepAmount < 0.98) ||
         (wakeElapsed >= 0 && wakeElapsed < 0.65) ||
         Math.abs(this.deskHopY) > 0.15 ||
@@ -2077,6 +2282,10 @@ export class KuroCatEngine {
       targetGazeX = targetGazeX * (1 - actEnv) + act.side * 0.85 * actEnv;
       targetGazeY = targetGazeY * (1 - actEnv) - 0.22 * actEnv;
     }
+    // Eyes-shut bliss: eyes drift slightly up behind the lids so the closed-eye arc reads as relaxed
+    if (act && act.kind === 'enjoy') {
+      targetGazeY -= 0.12 * actEnv;
+    }
     if (this.crossAmount > 0.05) {
       // Stable huffy side-glance (locked direction -> zero sudden left/right snap when cursor crosses center!)
       const huffX = this.crossHuffDir * 0.72 * this.crossAmount;
@@ -2087,10 +2296,12 @@ export class KuroCatEngine {
 
     const huffFace = this.crossAmount * this.crossHuffDir * 7.5;
     const lookFace = act && act.kind === 'look' ? act.side * 5.5 * actEnv : 0;
+    const musicFace = musicNodGain * beatHalf * 3.6;
     const targetFaceTurn =
       gx * (5.2 + curiousClamped * 3.8) * (1 - this.crossAmount * 0.75) +
       huffFace +
       lookFace +
+      musicFace +
       this.spineLean * 8.0 +
       this.typingSway * 8.5 +
       pureTypingGlance * 1.5;
@@ -2264,9 +2475,15 @@ export class KuroCatEngine {
     // Layer 3: Exact measured spine-deformable cat silhouette (ears, cheeks, neck, pear belly, grounded hind feet, eyes & tiny whiskers)
     this.drawCatBody(ctx, breath, purrShift);
 
+    // Layer 3.5: optional collar band, anchored to the live spine neck (behind the paws)
+    this.drawCollarBand(ctx, breath, purrShift);
+
     // Layer 4: True-scale velvety cat paws (tapered idle legs / planted diagonal mouse support leg / bent curled chest paw / plump round poking paw!)
     this.drawPaw(ctx, this.leftPaw, breath);
     this.drawPaw(ctx, this.rightPaw, breath);
+
+    // Layer 4.2: swinging gold bell, drawn on top of the paws so it is never occluded
+    this.drawCollarBell(ctx, breath, purrShift);
 
     // Layer 4.5: Alive cat comic FX (anger 💢 mark, tail-slam starburst & dust puffs, sleepy Zzz bubbles)
     this.drawCatAliveFx(ctx, performance.now(), breath);
@@ -2311,6 +2528,158 @@ export class KuroCatEngine {
     }
     this.deskHopSpring.kick(-38);
     this.squashSpring.kick(2.4);
+  }
+
+  /**
+   * Hand-drawn eighth note (variant 0) or beamed double note (variant 1).
+   * Built the same way as the paws: one ink silhouette first, then the cream core painted inside it,
+   * so head, stem and beam fuse into a single outline with no visible joints.
+   */
+  private drawMusicNote(
+    ctx: CanvasRenderingContext2D,
+    variant: number,
+    fill: string,
+    ink: string,
+  ): void {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const head = (cx: number, cy: number, rx: number, ry: number): void => {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    const stroke = (build: () => void, width: number, color: string): void => {
+      build();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+    };
+
+    const headOuter = [5.15, 3.95] as const;
+    const coreInset = 1.45;
+
+    if (variant === 0) {
+      // ---- ink silhouette
+      ctx.fillStyle = ink;
+      head(0, 0, headOuter[0], headOuter[1]);
+      stroke(
+        () => {
+          ctx.beginPath();
+          ctx.moveTo(2.6, -1.2);
+          ctx.lineTo(2.6, -15.9);
+          ctx.quadraticCurveTo(10.6, -15.4, 9.4, -8.6);
+        },
+        4.9,
+        ink,
+      );
+
+      // ---- cream core, inset inside the silhouette
+      ctx.fillStyle = fill;
+      head(0, 0, headOuter[0] - coreInset, headOuter[1] - coreInset * 0.9);
+      stroke(
+        () => {
+          ctx.beginPath();
+          ctx.moveTo(2.6, -1.2);
+          ctx.lineTo(2.6, -15.6);
+          ctx.quadraticCurveTo(9.4, -15.0, 8.3, -8.4);
+        },
+        2.1,
+        fill,
+      );
+      return;
+    }
+
+    // ---- variant 1: beamed pair
+    ctx.fillStyle = ink;
+    head(-8.6, 0.1, headOuter[0], headOuter[1]);
+    head(3.4, 0.3, headOuter[0], headOuter[1]);
+    stroke(
+      () => {
+        ctx.beginPath();
+        ctx.moveTo(-6.0, -1.0);
+        ctx.lineTo(-6.0, -16.0);
+      },
+      4.9,
+      ink,
+    );
+    stroke(
+      () => {
+        ctx.beginPath();
+        ctx.moveTo(6.0, -1.0);
+        ctx.lineTo(6.0, -14.2);
+      },
+      4.9,
+      ink,
+    );
+    ctx.beginPath();
+    ctx.moveTo(-7.9, -16.5);
+    ctx.quadraticCurveTo(-7.9, -15.6, -7.0, -15.5);
+    ctx.lineTo(7.0, -13.7);
+    ctx.quadraticCurveTo(7.9, -13.6, 7.9, -12.7);
+    ctx.lineTo(7.9, -11.8);
+    ctx.quadraticCurveTo(7.9, -11.0, 7.0, -11.1);
+    ctx.lineTo(-7.0, -12.9);
+    ctx.quadraticCurveTo(-7.9, -13.0, -7.9, -13.8);
+    ctx.closePath();
+    ctx.fill();
+
+    // ---- cream core
+    ctx.fillStyle = fill;
+    head(-8.6, 0.1, headOuter[0] - coreInset, headOuter[1] - coreInset * 0.9);
+    head(3.4, 0.3, headOuter[0] - coreInset, headOuter[1] - coreInset * 0.9);
+    stroke(
+      () => {
+        ctx.beginPath();
+        ctx.moveTo(-6.0, -1.0);
+        ctx.lineTo(-6.0, -15.7);
+      },
+      2.1,
+      fill,
+    );
+    stroke(
+      () => {
+        ctx.beginPath();
+        ctx.moveTo(6.0, -1.0);
+        ctx.lineTo(6.0, -13.9);
+      },
+      2.1,
+      fill,
+    );
+    ctx.beginPath();
+    ctx.moveTo(-6.9, -15.1);
+    ctx.quadraticCurveTo(-6.9, -14.4, -6.2, -14.3);
+    ctx.lineTo(6.2, -12.7);
+    ctx.quadraticCurveTo(6.9, -12.6, 6.9, -12.1);
+    ctx.lineTo(6.9, -12.2);
+    ctx.quadraticCurveTo(6.9, -11.7, 6.2, -11.8);
+    ctx.lineTo(-6.2, -13.4);
+    ctx.quadraticCurveTo(-6.9, -13.5, -6.9, -14.1);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  /**
+   * The glyph is flattened into an offscreen sprite once, then blitted with globalAlpha.
+   * Drawing the two-tone build live at partial alpha lets the ink layer show through the cream
+   * core, which is exactly what made the joints reappear while fading out.
+   */
+  private noteSprite(variant: number): HTMLCanvasElement {
+    const cached = this.noteSpriteCache.get(variant);
+    if (cached) return cached;
+    const box = { x: -15, y: -19, w: 30, h: 26 };
+    const res = 3;
+    const cv = document.createElement('canvas');
+    cv.width = Math.ceil(box.w * res);
+    cv.height = Math.ceil(box.h * res);
+    const g = cv.getContext('2d');
+    if (g) {
+      g.scale(res, res);
+      g.translate(-box.x, -box.y);
+      this.drawMusicNote(g, variant, '#fbfaf3', '#1d1d1b');
+    }
+    this.noteSpriteCache.set(variant, cv);
+    return cv;
   }
 
   private drawCatAliveFx(ctx: CanvasRenderingContext2D, now: number, breath: number): void {
@@ -2397,6 +2766,16 @@ export class KuroCatEngine {
         ctx.strokeText('Z', 0, 0);
         ctx.fillStyle = '#fbfaf3';
         ctx.fillText('Z', 0, 0);
+      } else if (fx.kind === 'note') {
+        const variant = fx.variant ?? 0;
+        const swayX = Math.sin(age * 0.0032 + variant * 1.7) * 5.0;
+        const sc = fx.size * (0.82 + u * 0.26);
+        const alpha = Math.min(1, u / 0.14) * Math.max(0, 1 - Math.max(0, (u - 0.55) / 0.45));
+        ctx.globalAlpha = alpha;
+        ctx.translate(fx.x + swayX, fx.y);
+        ctx.rotate(-0.08 + Math.sin(age * 0.0026 + variant) * 0.1);
+        ctx.scale(sc, sc);
+        ctx.drawImage(this.noteSprite(variant), -15, -19, 30, 26);
       }
       ctx.restore();
     }
@@ -2417,7 +2796,11 @@ export class KuroCatEngine {
         ? Math.sin(this.elapsed * 14.5) * 4.2 * Math.min(1, this.curiousAmount)
         : 0;
     const swayAmp = (1.4 + this.typingEnergy * 2.2) * (1 - this.sleepAmount * 0.85);
-    const gentleDrift = Math.sin(this.elapsed * (0.9 + this.typingEnergy * 1.4)) * swayAmp;
+    // Tail keeps time with the song (half-tempo so it feels lazy rather than frantic)
+    const musicTailSway =
+      this.musicGroove * Math.sin(this.musicBeatPhase * 0.5 + 0.7) * 6.4 * (1 - this.sleepAmount);
+    const gentleDrift =
+      Math.sin(this.elapsed * (0.9 + this.typingEnergy * 1.4)) * swayAmp + musicTailSway;
     const hipRight = this.spinePoint(0.84, 0);
 
     const startX = hipRight.x + 56;
@@ -2929,7 +3312,7 @@ export class KuroCatEngine {
     ctx.rotate(this.headTilt);
 
     const nowEar = performance.now();
-    const earAct = this.idleAct;
+    const earAct = this.musicAct ?? this.idleAct;
     const earActU = earAct && earAct.kind === 'ear' ? Math.max(0, Math.min(1, (nowEar - earAct.t0) / earAct.dur)) : 0;
     const lFlick = earAct && earAct.kind === 'ear' && earAct.side === -1 ? Math.sin(earActU * Math.PI * 3) * 0.24 * (1 - earActU) : 0;
     const rFlick = earAct && earAct.kind === 'ear' && earAct.side === 1 ? Math.sin(earActU * Math.PI * 3) * 0.24 * (1 - earActU) : 0;
@@ -2943,7 +3326,6 @@ export class KuroCatEngine {
       ctx.save();
       ctx.translate(sideSign * (33 + airplaneSpread) + this.faceTurnX * 0.18, -28 + airplaneDrop);
       ctx.rotate(sideSign * (0.08 - earPerk + twitch));
-
       const earPath = () => {
         ctx.beginPath();
         ctx.moveTo(sideSign * 19, 20);
@@ -3072,17 +3454,13 @@ export class KuroCatEngine {
     ctx.restore();
   }
 
-  private getHeadphoneLedColors(): { ring: string; glow: string; mic: string } {
-    const rgbMix = 0.5 + 0.5 * Math.sin(this.elapsed * 2.3 + this.typingEnergy * 2.0);
-    const pulse = 0.88 + 0.12 * Math.sin(this.elapsed * 5.2) + this.typingEnergy * 0.14;
-    const t = rgbMix * 0.58;
-    const r = Math.min(255, Math.round((212 * (1 - t) + 61 * t) * pulse));
-    const g = Math.min(255, Math.round((245 * (1 - t) + 242 * t) * pulse));
-    const b = Math.min(255, Math.round((61 * (1 - t) + 232 * t) * pulse));
+  /** Headset accent sampled from the 2D keyboard: Esc/Shift amber key tops, amber side walls. */
+  private getHeadphoneLedColors(): { ring: string; side: string; glow: string } {
+    const pulse = 0.55 + 0.45 * Math.max(0, Math.sin(this.elapsed * 1.6 + this.typingEnergy * 2.0));
     return {
-      ring: `rgb(${r}, ${g}, ${b})`,
-      glow: `rgba(${r}, ${g}, ${b}, 0.58)`,
-      mic: `rgba(82, 247, 212, ${(0.82 + 0.18 * Math.sin(this.elapsed * 3.8)).toFixed(2)})`,
+      ring: '#f4a524',
+      side: '#c27a10',
+      glow: `rgba(244, 165, 36, ${(0.34 + 0.26 * pulse).toFixed(3)})`,
     };
   }
 
@@ -3095,9 +3473,12 @@ export class KuroCatEngine {
     const dropY = -(1 - settled) * 38;
     const sc = 0.86 + 0.14 * settled + Math.max(0, hs - 1) * 0.12;
 
+    // Headband rides with the face turn exactly like the ear cups do, so the two passes stay rigid
+    const turnShift = this.faceTurnX * 0.125;
+
     ctx.save();
     ctx.globalAlpha = Math.min(1, settled * 1.45);
-    ctx.translate(0, dropY);
+    ctx.translate(turnShift, dropY);
     ctx.scale(sc, sc);
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
@@ -3111,23 +3492,23 @@ export class KuroCatEngine {
       ctx.bezierCurveTo(34, -56 + inset, 66 - inset * 0.7, -34 + inset, 64 - inset * 0.7, 4);
     };
 
-    // Subtle light specular outline so headband reads crisply even on pure Black Cat!
+    // Light key-cap edge (same grey as the keyboard key sides) so the band reads on black fur
     traceArch(0);
-    ctx.strokeStyle = '#6f7e99';
-    ctx.lineWidth = 12.2;
+    ctx.strokeStyle = '#d0d2cc';
+    ctx.lineWidth = 11.1;
     ctx.stroke();
 
-    // Matte-charcoal outer headband shell
+    // Matte-charcoal outer headband shell — the keyboard case colour
     traceArch(0);
-    ctx.strokeStyle = '#242a36';
-    ctx.lineWidth = 10.0;
+    ctx.strokeStyle = '#24262c';
+    ctx.lineWidth = 9.4;
     ctx.stroke();
 
     // Soft top satin highlight along crown
     ctx.beginPath();
     ctx.moveTo(-26, -54.2);
     ctx.quadraticCurveTo(0, -58.5, 26, -54.2);
-    ctx.strokeStyle = 'rgba(216, 228, 248, 0.36)';
+    ctx.strokeStyle = 'rgba(212, 214, 209, 0.42)';
     ctx.lineWidth = 2.0;
     ctx.stroke();
 
@@ -3135,7 +3516,7 @@ export class KuroCatEngine {
     ctx.beginPath();
     ctx.moveTo(-28, -48.5);
     ctx.quadraticCurveTo(0, -52.5, 28, -48.5);
-    ctx.strokeStyle = '#3b4454';
+    ctx.strokeStyle = '#363840';
     ctx.lineWidth = 5.4;
     ctx.stroke();
 
@@ -3144,7 +3525,7 @@ export class KuroCatEngine {
       ctx.beginPath();
       ctx.moveTo(s * 62.5, -14);
       ctx.lineTo(s * 64.0, 2);
-      ctx.strokeStyle = '#a2afc4';
+      ctx.strokeStyle = '#d0d2cc';
       ctx.lineWidth = 6.2;
       ctx.stroke();
     }
@@ -3175,9 +3556,9 @@ export class KuroCatEngine {
       ctx.translate(s * 60 + turnShift * 0.5, 5);
       ctx.rotate(s * 0.09);
 
-      // Inner plush memory-foam cheek cushion
-      ctx.fillStyle = '#384050';
-      ctx.strokeStyle = '#1b1f29';
+      // Mid-grey cushion peeking behind the key-cap coloured cup
+      ctx.fillStyle = '#9fa39c';
+      ctx.strokeStyle = '#6e726c';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.ellipse(-s * 3.5, 0, 10.5, 19.5, 0, 0, Math.PI * 2);
@@ -3186,18 +3567,24 @@ export class KuroCatEngine {
 
       // Domed matte-charcoal outer earcup shell
       const cupGrad = ctx.createLinearGradient(-10, -18, 10, 18);
-      cupGrad.addColorStop(0.0, '#363e4f');
-      cupGrad.addColorStop(0.55, '#242934');
-      cupGrad.addColorStop(1.0, '#191d26');
+      cupGrad.addColorStop(0.0, '#ffffff');
+      cupGrad.addColorStop(0.48, '#f1f2ee');
+      cupGrad.addColorStop(1.0, '#cfd1cb');
       ctx.fillStyle = cupGrad;
-      ctx.strokeStyle = '#8fa0bd';
-      ctx.lineWidth = 1.6;
+      ctx.strokeStyle = '#24262c';
+      ctx.lineWidth = 1.7;
       ctx.beginPath();
       ctx.ellipse(s * 4.2, 0, 10.2, 18.2, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      // Reactive KuroCat-lime / electric-cyan gaming LED ring!
+      // Inset driver face so the pale cup does not read as a flat egg
+      ctx.beginPath();
+      ctx.ellipse(s * 4.2, 0, 7.6, 14.4, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#e4e5e0';
+      ctx.fill();
+
+      // Amber accent ring, straight off the keyboard's Esc / Shift keys
       ctx.save();
       ctx.shadowColor = led.glow;
       ctx.shadowBlur = 7;
@@ -3216,58 +3603,38 @@ export class KuroCatEngine {
       ctx.restore();
     }
 
-    // Sleek curved flexible boom microphone from left earcup (-X) curving beside lower cheek
-    const mx0 = -60 + turnShift * 0.5;
-    const mxTip = -22 + this.faceTurnX * 0.55;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#5c6980';
-    ctx.lineWidth = 4.6;
-    ctx.beginPath();
-    ctx.moveTo(mx0, 14);
-    ctx.quadraticCurveTo(mx0 + 6, 29, mxTip, 23);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#1f242f';
-    ctx.lineWidth = 2.8;
-    ctx.beginPath();
-    ctx.moveTo(mx0, 14);
-    ctx.quadraticCurveTo(mx0 + 6, 29, mxTip, 23);
-    ctx.stroke();
-
-    // Metallic swivel joint on earcup
-    ctx.fillStyle = '#a2afc4';
-    ctx.beginPath();
-    ctx.arc(mx0, 14, 3.0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Plush charcoal foam windscreen capsule + glowing mic-live indicator dot
-    ctx.fillStyle = '#333b4a';
-    ctx.strokeStyle = '#73829c';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.ellipse(mxTip + 2.5, 22.4, 5.6, 3.8, -0.22, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = led.mic;
-    ctx.shadowColor = led.mic;
-    ctx.shadowBlur = 5;
-    ctx.beginPath();
-    ctx.arc(mxTip + 6.2, 21.5, 1.7, 0, Math.PI * 2);
-    ctx.fill();
     ctx.restore();
+  }
 
-    ctx.restore();
+  /**
+   * Eyelid closure driven by gesture acts: a brief slow blink, or the longer blissful
+   * "eyes shut" hold while a song is playing (soft in, long hold, soft out).
+   */
+  private fidgetEyeClosure(nowEye: number): number {
+    const act = this.musicAct ?? this.idleAct;
+    if (!act) return 0;
+    const u = Math.max(0, Math.min(1, (nowEye - act.t0) / act.dur));
+    if (act.kind === 'slowBlink') return 0.92 * Math.sin(u * Math.PI);
+    if (act.kind === 'enjoy') {
+      // Fixed-time eyelids (0.38s shut, 0.45s open) so the hold length is independent of duration
+      const t = (nowEye - act.t0) / 1000;
+      const durS = act.dur / 1000;
+      const e = Math.max(0, Math.min(1, t / 0.38, (durS - t) / 0.45));
+      return e * e * (3 - 2 * e);
+    }
+    return 0;
+  }
+
+  /** True while the "eyes shut, enjoying the song" gesture holds the lids closed (drawn as a relaxed arc). */
+  private isBlissClosed(nowEye: number): boolean {
+    const act = this.musicAct ?? this.idleAct;
+    return Boolean(act && act.kind === 'enjoy' && this.fidgetEyeClosure(nowEye) > 0.55);
   }
 
   private drawEyes(ctx: CanvasRenderingContext2D, cx: number, eyeY: number): void {
     const isRagdoll = this.catBreed === 'ragdoll';
     const nowEye = performance.now();
-    const slowBlinkVal =
-      this.idleAct && this.idleAct.kind === 'slowBlink'
-        ? 0.92 * Math.sin(Math.max(0, Math.min(1, (nowEye - this.idleAct.t0) / this.idleAct.dur)) * Math.PI)
-        : 0;
+    const slowBlinkVal = this.fidgetEyeClosure(nowEye);
     const blinkVal = Math.max(this.isBlinking ? 1 - Math.abs(this.blinkProgress - 1) : 0, slowBlinkVal);
     const closedness = Math.max(blinkVal, this.squintAmount * 0.85, this.privacyClose, this.sleepAmount);
     const curious = Math.min(1, this.curiousAmount);
@@ -3283,7 +3650,7 @@ export class KuroCatEngine {
       ctx.save();
       ctx.translate(ex, eyeY);
 
-      if (this.privacyClose > 0.45 || this.sleepAmount > 0.52) {
+      if (this.privacyClose > 0.45 || this.sleepAmount > 0.52 || this.isBlissClosed(nowEye)) {
         ctx.strokeStyle = isRagdoll ? '#212533' : '#d4f044';
         ctx.lineWidth = 2.9;
         ctx.lineCap = 'round';
@@ -3569,6 +3936,143 @@ export class KuroCatEngine {
     ctx.restore();
   }
 
+  private collarAnchor(
+    breath: number,
+    purrShift: number,
+  ): { x: number; y: number; ang: number } {
+    const top = this.spinePoint(0.382, breath);
+    const mid = this.spinePoint(COLLAR_2D_NECK_T, breath);
+    const bot = this.spinePoint(0.468, breath);
+    // Keep the strap angled with the LIVE spine axis: leaning, hunching and breathing move the
+    // collar with the neck instead of smearing it on the chest. A mouse-lean shear is far too
+    // steep for a cord that visually wraps a round neck, so the lean part is heavily damped —
+    // a hard lean (~-0.96) leaves only ~1/3 of the spine tilt.
+    const axisAng = -Math.atan2(bot.x - top.x, bot.y - top.y);
+    const leanDamp = 1 - Math.min(1, Math.abs(this.spineLean)) * 0.66;
+    return { x: mid.x + purrShift, y: mid.y, ang: axisAng * leanDamp + this.headTilt * 0.2 };
+  }
+
+  /**
+   * One round-capped stroke IS the strap: constant width, clean ends, no lens shape, no
+   * double outline. Everything after it is just 1px edges riding on top.
+   */
+  private strapCenterline(ctx: CanvasRenderingContext2D, rx: number, sag: number, thick: number, lift: number): void {
+    const yEnd = -lift + thick * 0.5;
+    const yMid = sag - lift + thick * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(-rx, yEnd);
+    ctx.quadraticCurveTo(0, yMid, rx, yEnd);
+  }
+
+  /** Layer 3.5: collar strap, on the body BEFORE the paws so paws still read as in front of it. */
+  private drawCollarBand(ctx: CanvasRenderingContext2D, breath: number, purrShift: number): void {
+    const worn = this.wornCollar;
+    if (worn === 'none') return;
+    const base = COLLAR_2D_COLORS[worn];
+    const { x, y, ang } = this.collarAnchor(breath, purrShift);
+    const rx = COLLAR_2D_STRAP_RX;
+    const sag = COLLAR_2D_STRAP_SAG;
+    const thick = COLLAR_2D_STRAP_THICK;
+    const lift = COLLAR_2D_STRAP_LIFT;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const yEnd = -lift + thick * 0.5;
+    const yMid = sag - lift + thick * 0.5;
+    const cxOf = (t: number) => -rx * (1 - t) * (1 - t) + rx * t * t;
+    const cyOf = (t: number) => yEnd * (1 - t) * (1 - t) + 2 * yMid * (1 - t) * t + yEnd * t * t;
+    // Thin leather cord: wide at the centre, tapering to fine points at both ends.
+    const halfOf = (t: number) => thick * 0.5 * (0.3 + 0.7 * Math.sin(Math.PI * t) ** 0.8);
+    const ribbonPath = (dyOff = 0) => {
+      ctx.beginPath();
+      const N = 44;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N;
+        const px2 = cxOf(t);
+        const py = cyOf(t) - halfOf(t) + dyOff;
+        i === 0 ? ctx.moveTo(px2, py) : ctx.lineTo(px2, py);
+      }
+      for (let i = N; i >= 0; i--) {
+        const t = i / N;
+        ctx.lineTo(cxOf(t), cyOf(t) + halfOf(t) + dyOff);
+      }
+      ctx.closePath();
+    };
+
+    // contact shadow pressed into the fur
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ribbonPath(1.5);
+    ctx.fill();
+
+    // the strap itself: thin cord, lit on top and falling into shadow underneath
+    const bodyGrad = ctx.createLinearGradient(0, -lift, 0, sag + thick - lift);
+    bodyGrad.addColorStop(0, collarShade(base, '#ffffff', 0.16, 1));
+    bodyGrad.addColorStop(0.55, base);
+    bodyGrad.addColorStop(1, collarShade(base, '#000000', 0.34, 1));
+    ctx.fillStyle = bodyGrad;
+    ribbonPath(0);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Layer 4.2: gold bell off the strap front, after the paws so a raised paw can never erase it. */
+  private drawCollarBell(ctx: CanvasRenderingContext2D, breath: number, purrShift: number): void {
+    if (this.wornCollar === 'none') return;
+    const { x, y, ang } = this.collarAnchor(breath, purrShift);
+    const frontY = COLLAR_2D_STRAP_SAG + COLLAR_2D_STRAP_THICK - COLLAR_2D_STRAP_LIFT;
+    const anchorX = x - frontY * Math.sin(ang);
+    const anchorY = y + frontY * Math.cos(ang);
+    const sway =
+      Math.sin(this.elapsed * 5.6) * (0.03 + this.typingEnergy * 0.14 + Math.abs(this.spineLean) * 0.18) +
+      this.strikeRock * 0.1;
+
+    const r = 6.2; // round bell body radius
+    const cy = r - 1.8; // slightly higher: the ball rides up against the cord
+    ctx.save();
+    ctx.translate(anchorX, anchorY);
+    ctx.rotate(sway);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.26)';
+    ctx.beginPath();
+    ctx.ellipse(0.8, cy + r + 1.7, r * 0.82, 1.7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // gold sphere: the radial gradient carries the volume
+    const bellGrad = ctx.createRadialGradient(-r * 0.36, cy - r * 0.42, 1.0, 0, cy, r * 1.4);
+    bellGrad.addColorStop(0, collarShade(COLLAR_2D_BELL_GOLD, '#ffffff', 0.36, 1));
+    bellGrad.addColorStop(0.5, COLLAR_2D_BELL_GOLD);
+    bellGrad.addColorStop(1, collarShade(COLLAR_2D_BELL_GOLD, '#000000', 0.3, 1));
+    ctx.fillStyle = bellGrad;
+    ctx.beginPath();
+    ctx.arc(0, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // thin dark-gold rim
+    ctx.strokeStyle = collarShade(COLLAR_2D_BELL_DARK, '#000000', 0.15, 0.55);
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(0, cy, r - 0.4, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // the bell's opening: a small oval slot low on the ball
+    ctx.fillStyle = 'rgba(120, 82, 14, 0.9)';
+    ctx.beginPath();
+    ctx.ellipse(0, cy + r * 0.38, r * 0.52, 1.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // warm highlight, upper-left
+    ctx.fillStyle = 'rgba(255, 250, 226, 0.62)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.34, cy - r * 0.36, 1.6, r * 0.3, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+
   private drawKeyboard(ctx: CanvasRenderingContext2D): void {
     const layout = getKeyboardLayout(this.keyboardLayout);
     const isCatFacing = this.keyboardOrientation === 'cat';
@@ -3838,6 +4342,7 @@ export class KuroCatEngine {
     squash: number,
     withCrease: boolean,
     isSmear = false,
+    supportLook = false,
   ): void {
     const dx = px - sx;
     const dy = py - sy;
@@ -3858,7 +4363,19 @@ export class KuroCatEngine {
     const pawRy = 12.0 * (1 - squash * 0.12);
 
     if (this.customSkin) {
-      this.drawCustomPlumpArm(ctx, this.customSkin, side, sx, sy, px, py, squash, withCrease, isSmear);
+      this.drawCustomPlumpArm(
+        ctx,
+        this.customSkin,
+        side,
+        sx,
+        sy,
+        px,
+        py,
+        squash,
+        withCrease,
+        isSmear,
+        supportLook,
+      );
       return;
     }
 
@@ -4141,7 +4658,7 @@ export class KuroCatEngine {
       if (paw.side === 'right' && this.leftPaw.mode === 'mouse') {
         const sh = this.getLiveShoulder(paw, breath);
         const baseSp = this.spinePoint(1.0, breath);
-        this.drawPlumpCatArm(ctx, 'right', sh.x, sh.y + 4, baseSp.x + 30, baseSp.y - 2, 0, true);
+        this.drawPlumpCatArm(ctx, 'right', sh.x, sh.y + 4, baseSp.x + 30, baseSp.y - 2, 0, true, false, true);
       } else {
         // Exact 4-line seated leg silhouette from ORIG 0.3s (outer curved leg line + crisp inner center-gap line!)
         const topSp = this.spinePoint(0.66, breath);
@@ -4202,6 +4719,18 @@ export class KuroCatEngine {
         ctx.moveTo(innerTopX, topSp.y + 10);
         ctx.lineTo(innerBotX, botSp.y - 1);
         ctx.stroke();
+
+        this.drawIdlePawDetail(
+          ctx,
+          isRagdoll ? 'rgba(93, 81, 72, 0.66)' : 'rgba(210, 212, 216, 0.62)',
+          this.catBreed === 'ragdoll' ? '#fbf9f3' : '#141314',
+          paw,
+          botSp,
+          sign,
+          outerBotX,
+          innerBotX,
+          paw.idleWeight,
+        );
       }
       ctx.restore();
     }
@@ -4368,8 +4897,9 @@ export class KuroCatEngine {
     const headCenter = this.spinePoint(0.24, breath);
     const hcx = headCenter.x + purrShift;
     const hcy = headCenter.y;
+    const slices = s.faceShape === 'round' ? BODY_SLICES_ROUND : BODY_SLICES;
 
-    for (const slice of BODY_SLICES) {
+    for (const slice of slices) {
       const sp = this.spinePoint(slice.t, breath);
       const widen = slice.t > 0.45 ? bellySwell : 1;
       const hw = slice.hw * widen;
@@ -4670,7 +5200,7 @@ export class KuroCatEngine {
     ctx.rotate(this.headTilt);
 
     const nowEar = performance.now();
-    const earAct = this.idleAct;
+    const earAct = this.musicAct ?? this.idleAct;
     const earActU = earAct && earAct.kind === 'ear' ? Math.max(0, Math.min(1, (nowEar - earAct.t0) / earAct.dur)) : 0;
     const lFlick = earAct && earAct.kind === 'ear' && earAct.side === -1 ? Math.sin(earActU * Math.PI * 3) * 0.24 * (1 - earActU) : 0;
     const rFlick = earAct && earAct.kind === 'ear' && earAct.side === 1 ? Math.sin(earActU * Math.PI * 3) * 0.24 * (1 - earActU) : 0;
@@ -4812,10 +5342,7 @@ export class KuroCatEngine {
 
   private drawCustomEyes(ctx: CanvasRenderingContext2D, s: ResolvedSkin, cx: number, eyeY: number): void {
     const nowEye = performance.now();
-    const slowBlinkVal =
-      this.idleAct && this.idleAct.kind === 'slowBlink'
-        ? 0.92 * Math.sin(Math.max(0, Math.min(1, (nowEye - this.idleAct.t0) / this.idleAct.dur)) * Math.PI)
-        : 0;
+    const slowBlinkVal = this.fidgetEyeClosure(nowEye);
     const blinkVal = Math.max(this.isBlinking ? 1 - Math.abs(this.blinkProgress - 1) : 0, slowBlinkVal);
     const closedness = Math.max(blinkVal, this.squintAmount * 0.85, this.privacyClose, this.sleepAmount);
     const curious = Math.min(1, this.curiousAmount);
@@ -4828,7 +5355,7 @@ export class KuroCatEngine {
       ctx.save();
       ctx.translate(eyeXs[idx], eyeY);
 
-      if (this.privacyClose > 0.45 || this.sleepAmount > 0.52) {
+      if (this.privacyClose > 0.45 || this.sleepAmount > 0.52 || this.isBlissClosed(nowEye)) {
         ctx.strokeStyle = s.squintColor;
         ctx.lineWidth = 2.9;
         ctx.lineCap = 'round';
@@ -4959,6 +5486,7 @@ export class KuroCatEngine {
     squash: number,
     withCrease: boolean,
     isSmear = false,
+    supportLook = false,
   ): void {
     // Keep dark-coat tuxedo shoulders cleanly outside the white chest bib
     if (s.isDarkBase && s.bellyBibColor) {
@@ -5097,7 +5625,10 @@ export class KuroCatEngine {
     ctx.fill();
     ctx.restore();
 
-    const edgeColor = s.pawOutlineColor || s.outlineColor;
+    // Dark coats define no outline colour, so the planted support arm resting against the belly
+    // would be black-on-black and vanish. Give it the same hairline as the seated legs.
+    const edgeColor =
+      s.pawOutlineColor || s.outlineColor || (supportLook && s.isDarkBase ? s.legLineColor : null);
     if (!isSmear && edgeColor) {
       ctx.lineWidth = 1.65;
       ctx.lineCap = 'round';
@@ -5108,8 +5639,9 @@ export class KuroCatEngine {
         const p0y = sy + ny * sgn * rShoulder;
         const p1x = midX + nx * sgn * (rShoulder * 0.86);
         const p1y = midY + ny * sgn * (rShoulder * 0.86);
-        const p2x = wx + nx * sgn * rWrist;
-        const p2y = wy + ny * sgn * rWrist;
+        // End the hairline exactly on the paw rim so the stroke flows into the mitten arc below.
+        const p2x = px + nx * sgn * pawRy;
+        const p2y = py + ny * sgn * pawRy;
 
         const q0x = p0x + (p1x - p0x) * startFrac;
         const q0y = p0y + (p1y - p0y) * startFrac;
@@ -5129,10 +5661,11 @@ export class KuroCatEngine {
         ctx.quadraticCurveTo(q1x, q1y, p2x, p2y);
         ctx.stroke();
       }
+      // Front half of the mitten, closing both hairlines into one continuous paw silhouette.
       const pawAng = Math.atan2(dy, dx);
       ctx.strokeStyle = colorWithAlpha(edgeColor, 0.92);
       ctx.beginPath();
-      ctx.ellipse(px, py, pawRx, pawRy, 0, pawAng - Math.PI * 0.62, pawAng + Math.PI * 0.62);
+      ctx.ellipse(px, py, pawRx, pawRy, pawAng, Math.PI / 2, -Math.PI / 2, true);
       ctx.stroke();
     } else if (!isSmear && s.armCreaseColor && withCrease && len > 28) {
       for (const sgn of [-1, 1]) {
@@ -5247,6 +5780,167 @@ export class KuroCatEngine {
     ctx.restore();
   }
 
+  /**
+   * The front paws rest ON the keyboard: a solid dome closed off by the leg lines, its front
+   * edge stroked from the SAME curve that fills it, so the rim can never drift off the shape.
+   */
+  private drawIdlePawDetail(
+    ctx: CanvasRenderingContext2D,
+    color: string,
+    furColor: string,
+    paw: PawState,
+    botSp: Vec2,
+    sign: -1 | 1,
+    outerBotX: number,
+    innerBotX: number,
+    weight: number,
+  ): void {
+    if (weight <= 0.05) return;
+    const topY = botSp.y - 1.0;
+    const xA = innerBotX;
+    const xB = outerBotX;
+    const cx = (xA + xB) * 0.5;
+    const halfW = Math.abs(xB - xA) * 0.5;
+    const ry = halfW * 0.86;
+
+    // the paw's front contour: the bottom half of an ellipse, so the paw is a round ball and
+    // its tangent leaves the leg lines smoothly instead of forming a cup
+    // Round bottom with vertical tangents at BOTH ends, and the endpoints are the leg-line
+    // endpoints themselves — so the rim cannot start left or right of the leg, ever.
+    const frontEdge = () => {
+      ctx.beginPath();
+      ctx.moveTo(xA, topY);
+      ctx.quadraticCurveTo(xA, topY + ry * 1.16, cx, topY + ry);
+      ctx.quadraticCurveTo(xB, topY + ry * 1.16, xB, topY);
+    };
+
+    ctx.save();
+    ctx.globalAlpha = weight;
+    ctx.lineJoin = 'round';
+
+    // solid paw: the same front contour, closed straight across the leg
+    ctx.fillStyle = furColor;
+    ctx.beginPath();
+    ctx.moveTo(xA, topY - 7.0);
+    ctx.lineTo(xA, topY);
+    ctx.quadraticCurveTo(xA, topY + ry * 1.16, cx, topY + ry);
+    ctx.quadraticCurveTo(xB, topY + ry * 1.16, xB, topY);
+    ctx.lineTo(xB, topY - 7.0);
+    ctx.closePath();
+    ctx.fill();
+
+    // rim: the identical curve, so it hugs the paw edge end to end. Butt caps + a few extra
+    // degrees make both ends tuck UNDER the leg lines, so there is no cap bump at the joint.
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'butt';
+    frontEdge();
+    ctx.stroke();
+
+    // two toe splits standing on the rim, fading up into the leg
+    // toe creases: they START on the rim (exact ellipse point) and fade up into the leg, so
+    // nothing floats inside the paw
+    ctx.lineWidth = 1.15;
+    for (const k of [-1, 1]) {
+      const t = 0.42 * k;
+      const dx = halfW * t;
+      // y of the (two-quadratic) bottom curve at that x, so the crease starts exactly on the rim
+      const onRimY = topY + ry * (0.42 + 0.58 * Math.sqrt(Math.max(0, 1 - t * t)));
+      const toeGrad = ctx.createLinearGradient(0, onRimY, 0, onRimY - 7.4);
+      toeGrad.addColorStop(0, colorWithAlpha(color, 0.58));
+      toeGrad.addColorStop(0.55, colorWithAlpha(color, 0.16));
+      toeGrad.addColorStop(1, colorWithAlpha(color, 0.0));
+      ctx.strokeStyle = toeGrad;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx, onRimY);
+      ctx.quadraticCurveTo(cx + dx * 0.88, onRimY - 3.6, cx + dx * 0.78, onRimY - 7.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Draws a seated front leg as ONE continuous stroke: outer leg line -> round paw bowl ->
+   * inner leg line. Because the paw edge is part of the same path as the legs, there is no
+   * seam, no cap bump and no half-pixel step at either side of the foot.
+   */
+  private drawSeatedLegPath(
+    ctx: CanvasRenderingContext2D,
+    color: string,
+    furColor: string,
+    topSp: Vec2,
+    midSp: Vec2,
+    botSp: Vec2,
+    sign: -1 | 1,
+    outerTopX: number,
+    outerBotX: number,
+    innerTopX: number,
+    innerBotX: number,
+    weight: number,
+    lineWidth = 1.5,
+  ): void {
+    if (weight <= 0.05) return;
+    const topY = botSp.y - 1;
+    const xA = innerBotX;
+    const xB = outerBotX;
+    const cx = (xA + xB) * 0.5;
+    const halfW = Math.abs(xB - xA) * 0.5;
+    const ry = halfW * 0.86;
+
+    const bowl = (fromOuter: boolean) => {
+      if (fromOuter) {
+        ctx.quadraticCurveTo(xB, topY + ry * 1.16, cx, topY + ry);
+        ctx.quadraticCurveTo(xA, topY + ry * 1.16, xA, topY);
+      } else {
+        ctx.quadraticCurveTo(xA, topY + ry * 1.16, cx, topY + ry);
+        ctx.quadraticCurveTo(xB, topY + ry * 1.16, xB, topY);
+      }
+    };
+
+    ctx.save();
+    ctx.globalAlpha = weight;
+
+    // fur fill for the part of the bowl that hangs below the body silhouette
+    ctx.fillStyle = furColor;
+    ctx.beginPath();
+    ctx.moveTo(xB, topY - 7);
+    ctx.lineTo(xB, topY);
+    bowl(true);
+    ctx.lineTo(xA, topY - 7);
+    ctx.closePath();
+    ctx.fill();
+
+    // the single stroke: leg, paw, leg
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(outerTopX, topSp.y);
+    ctx.quadraticCurveTo(midSp.x + sign * 41, midSp.y, xB, topY);
+    bowl(true);
+    ctx.lineTo(innerTopX, topSp.y + 10);
+    ctx.stroke();
+
+    // two toe creases, starting exactly on the bowl curve
+    for (const k of [-1, 1]) {
+      const t = 0.42 * k;
+      const dx = halfW * t;
+      const onRimY = topY + ry * (0.42 + 0.58 * Math.sqrt(Math.max(0, 1 - t * t)));
+      const toeGrad = ctx.createLinearGradient(0, onRimY, 0, onRimY - 7.4);
+      toeGrad.addColorStop(0, colorWithAlpha(color, 0.58));
+      toeGrad.addColorStop(0.55, colorWithAlpha(color, 0.16));
+      toeGrad.addColorStop(1, colorWithAlpha(color, 0.0));
+      ctx.strokeStyle = toeGrad;
+      ctx.lineWidth = 1.15;
+      ctx.beginPath();
+      ctx.moveTo(cx + dx, onRimY);
+      ctx.quadraticCurveTo(cx + dx * 0.88, onRimY - 3.6, cx + dx * 0.78, onRimY - 7.4);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   private drawCustomIdleLegDetails(
     ctx: CanvasRenderingContext2D,
     s: ResolvedSkin,
@@ -5282,18 +5976,20 @@ export class KuroCatEngine {
       ctx.restore();
     }
 
-    ctx.strokeStyle = s.legLineColor;
-    ctx.lineWidth = 1.5;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(outerTopX, topSp.y);
-    ctx.quadraticCurveTo(midSp.x + sign * 41, midSp.y, outerBotX, botSp.y - 1);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(innerTopX, topSp.y + 10);
-    ctx.lineTo(innerBotX, botSp.y - 1);
-    ctx.stroke();
+    this.drawSeatedLegPath(
+      ctx,
+      s.legLineColor,
+      s.furSecondaryColor || s.furColor,
+      topSp,
+      midSp,
+      botSp,
+      sign,
+      outerTopX,
+      outerBotX,
+      innerTopX,
+      innerBotX,
+      paw.idleWeight,
+    );
   }
 
   private roundRect(

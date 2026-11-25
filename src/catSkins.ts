@@ -60,12 +60,16 @@ export interface CatSkinConfig {
   accentColor?: string;
   accentSideColor?: string;
 
+  /** Face silhouette preset: 'round' = the chubby cheek build, omitted = the classic original. */
+  faceShape?: 'round' | 'classic';
+
   spots?: CatSpot[];
 }
 
 export interface ResolvedSkin {
   id: string;
   name: string;
+  faceShape: 'round' | 'classic';
   isDarkBase: boolean;
   furColor: string;
   furSecondaryColor: string;
@@ -134,6 +138,7 @@ export function resolveCustomSkin(raw: CatSkinConfig): ResolvedSkin {
   return {
     id: raw.id,
     name: raw.name || raw.id,
+    faceShape: raw.faceShape === 'round' ? 'round' : 'classic',
     isDarkBase: darkBase,
     furColor: fur,
     furSecondaryColor: raw.furSecondaryColor || fur,
@@ -216,5 +221,28 @@ export const DEFAULT_BUILTIN_CATS: CatSkinConfig[] = [
     eyeColorTop: '#2563eb',
     accentColor: '#5cc8ff',
     accentSideColor: '#2563eb',
+  },
+  {
+    // The commissioned custom look: round cheeks + its own fine leather bell collar.
+    id: 'bellblack',
+    name: '铃铛小黑',
+    emoji: '🔔',
+    builtin: true,
+    faceShape: 'round',
+    furColor: '#141314',
+    legLineColor: 'rgba(210, 212, 216, 0.64)',
+    eyeColorTop: '#fbcb45',
+    eyeColorBottom: '#fbcb45',
+    squintColor: '#fbcb45',
+    pupilColor: '#0e0e10',
+    tailColor: '#141314',
+    tailFluffy: true,
+    pattern: 'solid',
+    whiskerColor: 'rgba(205, 208, 214, 0.54)',
+    armColor: '#141314',
+    pawColor: '#141314',
+    armCreaseColor: 'rgba(216, 218, 222, 0.64)',
+    accentColor: '#fbcb45',
+    accentSideColor: '#e3ab27',
   },
 ];

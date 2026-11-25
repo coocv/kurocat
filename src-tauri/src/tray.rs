@@ -137,6 +137,8 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
     )?;
 
     let breed_black = MenuItem::with_id(app, "breed_black", "经典小黑猫", true, None::<&str>)?;
+    let breed_bellblack =
+        MenuItem::with_id(app, "breed_bellblack", "铃铛小黑（圆脸·皮绳铃）", true, None::<&str>)?;
     let breed_ragdoll = MenuItem::with_id(app, "breed_ragdoll", "暖奶茶布偶猫", true, None::<&str>)?;
     let breed_orange = MenuItem::with_id(app, "breed_orange", "大橘猫（虎斑）", true, None::<&str>)?;
     let breed_calico = MenuItem::with_id(app, "breed_calico", "三花猫", true, None::<&str>)?;
@@ -149,6 +151,7 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
         true,
         &[
             &breed_black,
+            &breed_bellblack,
             &breed_ragdoll,
             &breed_orange,
             &breed_calico,
@@ -587,6 +590,7 @@ pub fn setup_tray(app: &AppHandle, initial: &AppSettings) -> tauri::Result<()> {
                     let _ = app.emit("kuro-settings", s.clone());
                 }
                 "breed_black" => apply_breed_and_save(app, "black"),
+                "breed_bellblack" => apply_breed_and_save(app, "bellblack"),
                 "breed_ragdoll" => apply_breed_and_save(app, "ragdoll"),
                 "breed_orange" => apply_breed_and_save(app, "orange-tabby"),
                 "breed_calico" => apply_breed_and_save(app, "calico"),

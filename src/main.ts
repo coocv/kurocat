@@ -183,6 +183,7 @@ let isWin7Ulw = false;
 let active3d = false;
 let privacyActive = false;
 let gameActive = false;
+let musicActive = false;
 
 function shouldWearHeadphonesNow(): boolean {
   if (settings.catBreed === 'dafeiyu') return false;
@@ -192,7 +193,7 @@ function shouldWearHeadphonesNow(): boolean {
       : 'off';
   if (hm === 'on') return true;
   if (hm === 'off') return false;
-  return gameActive;
+  return gameActive || musicActive;
 }
 
 function wants3DNow(): boolean {
@@ -232,6 +233,7 @@ function syncEngine3DState(): void {
   }
   engine3d.setCollar(collar);
   engine3d.setHeadphones(shouldWearHeadphonesNow());
+  engine.setMusicPlaying(shouldWearHeadphonesNow() && musicActive);
   engine3d.setGameActive(gameActive);
   engine3d.setKeyboardConfig(kbLayout, kbOrient);
   engine3d.setTailKeyConfig(tailMode, tailIds);
@@ -376,7 +378,7 @@ function syncMenuUI(): void {
   });
   const collarRowEl = document.getElementById('collar-row');
   if (collarRowEl) {
-    collarRowEl.classList.toggle('hidden', renderMode === '2d' || settings.catBreed === 'dafeiyu');
+    collarRowEl.classList.toggle('hidden', settings.catBreed === 'dafeiyu');
   }
 
   const headphoneMode: HeadphoneMode =
@@ -400,7 +402,10 @@ function syncMenuUI(): void {
 
   engine.showKeyBubbles = settings.showKeyBubbles;
   engine.setCatAppearance(activeCat?.id || 'black', activeCat);
-  engine.setHeadphones(shouldWearHeadphonesNow());
+  engine.setCollar(collarColor);
+  const wearHeadphones = shouldWearHeadphonesNow();
+  engine.setHeadphones(wearHeadphones);
+  engine.setMusicPlaying(wearHeadphones && musicActive);
   engine.setKeyboardConfig(kbLayout, kbOrient);
   engine.setTailKeyConfig(tailMode, tailIds);
   if (!sliderDragging) {
@@ -1041,11 +1046,17 @@ async function bootstrap(): Promise<void> {
 
   try {
     gameActive = await invoke<boolean>('get_game_active');
+    try {
+      musicActive = await invoke<boolean>('get_music_active');
+    } catch {
+      musicActive = false;
+    }
     const wearNow = shouldWearHeadphonesNow();
     engine.setGameActive(gameActive);
     engine3d?.setGameActive(gameActive);
     engine.setHeadphones(wearNow);
     engine3d?.setHeadphones(wearNow);
+    engine.setMusicPlaying(wearNow && musicActive);
   } catch {
     // non-Tauri or older backend
   }
@@ -1057,6 +1068,15 @@ async function bootstrap(): Promise<void> {
     engine3d?.setGameActive(gameActive);
     engine.setHeadphones(wearNow);
     engine3d?.setHeadphones(wearNow);
+    engine.setMusicPlaying(wearNow && musicActive);
+  });
+
+  await listen<{ active?: boolean }>('kuro-music-active', (ev) => {
+    musicActive = Boolean(ev.payload?.active);
+    const wearNow = shouldWearHeadphonesNow();
+    engine.setHeadphones(wearNow);
+    engine3d?.setHeadphones(wearNow);
+    engine.setMusicPlaying(wearNow && musicActive);
   });
 
   let lastPetHover = false;

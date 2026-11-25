@@ -7,6 +7,7 @@ mod input_hook;
 #[cfg(target_os = "macos")]
 mod macos_window;
 mod mcp;
+mod music_detect;
 mod obs;
 mod privacy;
 mod tray;
@@ -295,6 +296,11 @@ fn get_cats() -> Vec<CatSkinConfig> {
 #[tauri::command]
 fn get_game_active() -> bool {
     game_detect::is_game_active()
+}
+
+#[tauri::command]
+fn get_music_active() -> bool {
+    music_detect::is_music_active()
 }
 
 #[tauri::command]
@@ -2380,6 +2386,11 @@ pub fn run() {
                 settings_for_setup.clone(),
                 paused_for_setup.clone(),
             );
+            music_detect::start_music_detection_watcher(
+                handle.clone(),
+                settings_for_setup.clone(),
+                paused_for_setup.clone(),
+            );
             start_hit_test_loop(
                 handle.clone(),
                 settings_for_setup,
@@ -2458,6 +2469,7 @@ pub fn run() {
             get_settings,
             get_cats,
             get_game_active,
+            get_music_active,
             get_mcp_config,
             get_obs_url,
             get_app_version,
