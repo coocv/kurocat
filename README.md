@@ -12,6 +12,8 @@
   <img src="docs/2d/hero.webp" width="420" alt="铃铛小黑 静立姿态" />
 </p>
 
+> 🔗 **在线预览**：[https://coocv.github.io/kurocat/](https://coocv.github.io/kurocat/?skin=bellblack&collar=none) —— 打开就能摸猫、听歌律动、看闭眼享受，页面左上角可手动调头部倾斜与扭头。
+
 ## 角色：铃铛小黑（`bellblack`）
 
 一只圆脸黑猫，脖子上一条细皮绳挂着小金铃。

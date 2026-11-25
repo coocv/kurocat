@@ -12,6 +12,8 @@ A 2D custom branch of [qianyiai/kurocat](https://github.com/qianyiai/kurocat), v
   <img src="docs/2d/hero.webp" width="420" alt="Bellblack cat, idle pose" />
 </p>
 
+> 🔗 **Live preview**: [https://coocv.github.io/kurocat/](https://coocv.github.io/kurocat/?skin=bellblack&collar=none) — pet the cat, trigger the music groove and the eyes-shut bliss right in the browser; the top-left panel lets you drive head tilt and face turn by hand.
+
 ## The cat: Bellblack (`bellblack`)
 
 A round-faced black cat wearing a thin leather cord with a small gold bell.

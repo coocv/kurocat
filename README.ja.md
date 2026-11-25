@@ -12,6 +12,8 @@
   <img src="docs/2d/hero.webp" width="420" alt="ベル付き黒猫・立ち姿" />
 </p>
 
+> 🔗 **オンラインプレビュー**：[https://coocv.github.io/kurocat/](https://coocv.github.io/kurocat/?skin=bellblack&collar=none) —— ブラウザでそのまま猫を撫でたり、音楽グルーヴや閉眼を確認できます。左上のパネルで首の傾きと横顔の向きを手動操作できます。
+
 ## キャラクター：鈴付き黒猫（`bellblack`）
 
 丸い顔の黒猫。細い革紐に小さな金の鈴を付けています。
