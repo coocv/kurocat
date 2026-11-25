@@ -231,6 +231,7 @@ export const DEFAULT_BUILTIN_CATS: CatSkinConfig[] = [
     faceShape: 'round',
     furColor: '#141314',
     legLineColor: 'rgba(210, 212, 216, 0.64)',
+    outlineColor: 'rgba(228, 234, 244, 0.74)',
     eyeColorTop: '#fbcb45',
     eyeColorBottom: '#fbcb45',
     squintColor: '#fbcb45',

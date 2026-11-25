@@ -3052,6 +3052,7 @@ export class KuroCatEngine {
     } else {
       ctx.shadowColor = 'rgba(18, 17, 18, 0.45)';
       ctx.shadowBlur = 1.6;
+
       ctx.strokeStyle = '#141314';
       ctx.lineWidth = 16.0;
       ctx.beginPath();
@@ -4286,6 +4287,14 @@ export class KuroCatEngine {
       ctx.fill();
       ctx.restore();
 
+      // Light outer rim keeps the dark keyboard deck readable on dark desktops
+      ctx.save();
+      ctx.strokeStyle = 'rgba(214, 220, 231, 0.55)';
+      ctx.lineWidth = 2.4;
+      this.trapezoidPath(ctx, topHalfW + 1.2, botHalfW + 1.2, -halfH - 1, halfH + 1, 7.5);
+      ctx.stroke();
+      ctx.restore();
+
       ctx.fillStyle = '#24262c';
       ctx.strokeStyle = pickerAccentTop;
       ctx.lineWidth = 2.0;
@@ -5186,7 +5195,22 @@ export class KuroCatEngine {
       ctx.save();
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
-      traceBodyPath();
+      // Open edge: skip the crown curve, otherwise a light seam shows between the ears
+      ctx.beginPath();
+      ctx.moveTo(rightPts[0].x, rightPts[0].y);
+      for (let i = 0; i < rightPts.length - 1; i++) {
+        const p0 = rightPts[i];
+        const p1 = rightPts[i + 1];
+        ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
+      }
+      ctx.lineTo(rightPts[rightPts.length - 1].x, rightPts[rightPts.length - 1].y);
+      ctx.quadraticCurveTo(basePt.x + purrShift, basePt.y + 6, leftPts[leftPts.length - 1].x, leftPts[leftPts.length - 1].y);
+      for (let i = leftPts.length - 1; i > 0; i--) {
+        const p0 = leftPts[i];
+        const p1 = leftPts[i - 1];
+        ctx.quadraticCurveTo(p0.x, p0.y, (p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5);
+      }
+      ctx.lineTo(leftPts[0].x, leftPts[0].y);
       ctx.strokeStyle = s.outlineColor;
       ctx.lineWidth = 1.8;
       ctx.lineJoin = 'round';
