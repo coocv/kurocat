@@ -2,11 +2,12 @@
 html,body{margin:0;background:#fff;font:12px/1.45 -apple-system,"PingFang SC",sans-serif;color:#222}
 *{box-sizing:border-box}
 body{display:flex;flex-direction:column;min-height:100vh;justify-content:center;align-items:center}
-#c{display:block;width:min(840px,100vw);height:auto;margin:auto;cursor:grab}
+#stage{position:relative;flex:0 0 auto;margin:auto}
+#c{display:block;width:840px;height:880px;cursor:grab;transform-origin:top left}
 @media (max-width:1000px){
   body{justify-content:flex-start}
   #panel{position:static;order:-1;width:calc(100vw - 24px);max-width:600px;margin:12px 0 0}
-  #c{margin:4px auto 14px}
+  #stage{margin:4px auto 14px}
 }
 #c.dragging{cursor:grabbing}
 #panel{position:fixed;left:12px;top:12px;width:212px;padding:10px 12px 11px;border-radius:10px;
@@ -21,9 +22,9 @@ button{font:inherit;padding:5px 6px;border:1px solid #d8d8d8;border-radius:6px;b
 button:hover{background:#f0f0f0}
 button.on{background:#fbf0d8;border-color:#e0bd7a;color:#8a5b00}
 .hint{margin:9px 0 0;color:#8a8a8a;line-height:1.5}
-</style>  <script type="module" crossorigin src="./assets/index-BKfBj9wF.js"></script>
+</style>  <script type="module" crossorigin src="./assets/index-lFJ4krrw.js"></script>
 </head><body>
-<canvas id="c"></canvas>
+<div id="stage"><canvas id="c"></canvas></div>
 <div id="panel">
   <h3>KuroCat 预览控制台</h3>
   <div class="row"><label>头部倾斜 <b id="tiltVal">自动</b></label>
