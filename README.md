@@ -12,7 +12,7 @@
   <img src="docs/2d/hero.webp" width="420" alt="铃铛小黑 静立姿态" />
 </p>
 
-> 🔗 **在线预览**：[https://coocv.github.io/kurocat/](https://coocv.github.io/kurocat/?skin=bellblack&collar=none) —— 打开就能摸猫、听歌律动、看闭眼享受，页面左上角可手动调头部倾斜与扭头。
+> 🔗 **在线预览**：[https://coocv.github.io/kurocat/](https://coocv.github.io/kurocat/?skin=bellblack&collar=none) —— 打开就能摸猫、听歌律动、看闭眼享受；在页面上敲键盘、移动鼠标，猫会同步敲键盘并跟着光标转视线。左上角面板可手动调头部倾斜与扭头。
 
 ## 角色：铃铛小黑（`bellblack`）
 
