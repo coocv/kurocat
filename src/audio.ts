@@ -4,12 +4,45 @@ class CatAudio {
   private graphReady = false;
   private masterGain: GainNode | null = null;
   private currentIntensity = 0;
+  /**
+   * Keep the CoreAudio output device idle whenever we are not actually purring.
+   * KuroCat's own WebAudio stream otherwise leaves `DeviceIsRunningSomewhere` true forever,
+   * which makes the music watcher believe a song is always playing (headphones never come off).
+   */
+  private suspendTimer: number | null = null;
+  private selfAudioReported = false;
 
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
       this.setPurrIntensity(0);
     }
+  }
+
+  /** Tell the backend that the pet itself is sounding, so music detection skips it. */
+  private reportSelfAudio(active: boolean): void {
+    if (this.selfAudioReported === active) return;
+    this.selfAudioReported = active;
+    const internals = (
+      window as unknown as {
+        __TAURI_INTERNALS__?: { invoke?: (cmd: string, args: unknown) => Promise<unknown> };
+      }
+    ).__TAURI_INTERNALS__;
+    if (!internals?.invoke) return;
+    void internals.invoke('set_self_audio', { active }).catch(() => {});
+  }
+
+  /** Suspend the context shortly after the last sound, so the output device can go idle. */
+  private scheduleSuspend(): void {
+    if (this.suspendTimer !== null) window.clearTimeout(this.suspendTimer);
+    this.suspendTimer = window.setTimeout(() => {
+      this.suspendTimer = null;
+      if (this.currentIntensity > 0.01 || !this.ctx) return;
+      this.reportSelfAudio(false);
+      if (this.ctx.state === 'running') {
+        void this.ctx.suspend().catch(() => {});
+      }
+    }, 450);
   }
 
   private ensurePurrGraph(): boolean {
@@ -129,6 +162,13 @@ class CatAudio {
     const targetGain = target * 0.26;
     const timeConst = target > 0.01 ? 0.14 : 0.22;
     this.masterGain.gain.setTargetAtTime(targetGain, now, timeConst);
+
+    if (this.suspendTimer !== null) {
+      window.clearTimeout(this.suspendTimer);
+      this.suspendTimer = null;
+    }
+    this.reportSelfAudio(target > 0.01);
+    if (target <= 0.01) this.scheduleSuspend();
   }
 }
 

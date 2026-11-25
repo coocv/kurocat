@@ -683,6 +683,11 @@ fn set_menu_open(state: State<'_, AppState>, open: bool) {
 }
 
 #[tauri::command]
+fn set_self_audio(active: bool) {
+    crate::music_detect::set_self_audio(active);
+}
+
+#[tauri::command]
 fn set_tail_picker_bounds(state: State<'_, AppState>, bounds: Option<TailPickerBounds>) {
     *state.tail_picker_bounds.lock().unwrap() = bounds;
 }
@@ -2479,6 +2484,7 @@ pub fn run() {
             open_tail_picker_from_menu,
             preview_scale,
             set_menu_open,
+            set_self_audio,
             set_tail_picker_bounds,
             save_tail_picker_selection,
             set_dragging,

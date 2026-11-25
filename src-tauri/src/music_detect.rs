@@ -20,6 +20,14 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
 static MUSIC_ACTIVE: AtomicBool = AtomicBool::new(false);
+/// Set while the pet itself is producing sound (purr), so our own WebAudio stream
+/// is never mistaken for a playing song.
+static SELF_AUDIO: AtomicBool = AtomicBool::new(false);
+
+/// Marks the pet's own purr as active, so the watcher skips its own audio stream.
+pub fn set_self_audio(active: bool) {
+    SELF_AUDIO.store(active, Ordering::Relaxed);
+}
 
 pub fn is_music_active() -> bool {
     MUSIC_ACTIVE.load(Ordering::Relaxed)
@@ -152,6 +160,13 @@ pub fn start_music_detection_watcher(
                     MUSIC_ACTIVE.store(false, Ordering::Relaxed);
                     let _ = app.emit("kuro-music-active", MusicActivePayload { active: false });
                 }
+                continue;
+            }
+
+            if SELF_AUDIO.load(Ordering::Relaxed) {
+                // Our own purr keeps the output device busy; ignore it entirely.
+                on_streak = 0;
+                off_streak = 0;
                 continue;
             }
 
