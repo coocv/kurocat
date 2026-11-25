@@ -1,7 +1,13 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>KuroCat 铃铛小黑 · 2D 预览</title><meta name="viewport" content="width=880"><style>
 html,body{margin:0;background:#fff;font:12px/1.45 -apple-system,"PingFang SC",sans-serif;color:#222}
-body{display:flex;min-height:100vh;justify-content:center;align-items:center}
-#c{display:block;width:840px;height:880px;margin:auto;cursor:grab;flex:0 0 auto}
+*{box-sizing:border-box}
+body{display:flex;flex-direction:column;min-height:100vh;justify-content:center;align-items:center}
+#c{display:block;width:min(840px,100vw);height:auto;margin:auto;cursor:grab}
+@media (max-width:1000px){
+  body{justify-content:flex-start}
+  #panel{position:static;order:-1;width:calc(100vw - 24px);max-width:600px;margin:12px 0 0}
+  #c{margin:4px auto 14px}
+}
 #c.dragging{cursor:grabbing}
 #panel{position:fixed;left:12px;top:12px;width:212px;padding:10px 12px 11px;border-radius:10px;
   background:rgba(255,255,255,.93);box-shadow:0 2px 14px rgba(0,0,0,.15);user-select:none}
