@@ -1,4 +1,4 @@
-# 🐈‍⬛ KuroCat — Free Open-Source Desktop Typing Cat Pet (Bongo Cat Alternative)
+# 🐈‍⬛ KuroCat · 2D Custom Branch (`feat/bellblack-2d`)
 
 <p align="center">
   <a href="./README.md">🇨🇳 简体中文</a> &nbsp;|&nbsp;
@@ -6,189 +6,104 @@
   <a href="./README.ja.md">🇯🇵 日本語</a>
 </p>
 
+This is a personal custom branch of [qianyiai/kurocat](https://github.com/qianyiai/kurocat), forked from upstream **5.1.0** (version bumped to **5.2.0** here). Everything upstream ships — keyboard/mouse following, transparent always-on-top window, tray, password privacy guard, MCP, the 3D engine — is kept as-is. This document only records **what this branch adds and changes**.
+
+All changes live in the **2D engine** (`src/catEngine.ts` / `src/catSkins.ts` / `src/main.ts`, plus the tray menu and music detection in `src-tauri`). The 3D engine is untouched.
+
 <p align="center">
-  <a href="https://qianyi.one/kurocat/?lang=en"><img src="https://img.shields.io/badge/Website-qianyi.one%2Fkurocat-d4f044?style=flat-square&logo=googlechrome&logoColor=111" alt="KuroCat Official Website" /></a>
-  <a href="https://github.com/qianyiai/kurocat/releases/latest"><img src="https://img.shields.io/github/v/release/qianyiai/kurocat?style=flat-square&color=38bdf8" alt="Latest Release" /></a>
-  <a href="https://github.com/qianyiai/kurocat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/qianyiai/kurocat?style=flat-square&color=22c55e" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/Platform-Win11%2F10%2F7%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-818cf8?style=flat-square" alt="Cross Platform" />
+  <img src="docs/2d/hero.webp" width="420" alt="Bellblack cat, idle pose" />
 </p>
 
-> 🌐 **Official Website, Live Web Playground & Fast Downloads**: [**https://qianyi.one/kurocat/**](https://qianyi.one/kurocat/) ([English UI](https://qianyi.one/kurocat/?lang=en))
+## 1. New character: "Bellblack" (`bellblack`)
 
-A lightweight, transparent, always-on-top desktop typing & mouse companion for **Windows (Win11/10 & Win7 SP1) / macOS (10.15+ Apple Silicon & Intel) / Linux (Ubuntu / Debian / KylinOS / UOS)** — built with **Tauri v2 (native Rust global hooks + built-in MCP server + Three.js 3D / HTML5 Canvas 2D dual engine)**. Zero external runtime dependencies, ~24 MB RAM footprint. Defaults to **✨ 3D Volumetric Figurine Mode** with one-click switching to **🎨 2D Classic Hand-Drawn**, and ships out of the box with **6 hand-crafted cat skins + 🐳 BigFish (whale-girl)** (Classic Black Cat, Ragdoll, Orange Tabby, Calico, Tuxedo, Siamese, and BigFish), **optional 3D collar bells & gaming headset (auto-equips in PC games, both off by default)**, **system-level password privacy guard**, **4 customizable tail-key patting modes**, **native OBS transparent Browser Source**, and a **built-in MCP server** so AI can create your own cat from a photo in one sentence (with 1:1 `spots[]` markings synced across 3D & 2D)!
-
-## 🎬 Live Web Playground & 14s BigFish Demo Video
-
-<table>
-  <tr>
-    <td align="center" width="54%" valign="top">
-      <a href="https://qianyi.one/kurocat/?lang=en" target="_blank" rel="noopener">
-        <img src="docs/playground-demo.webp" alt="KuroCat live interactive web playground (7 skins · 65%/108-key · password privacy guard)" width="400" />
-      </a>
-      <br/>
-      <strong>🎮 <a href="https://qianyi.one/kurocat/?lang=en">Try the Live Web Playground (type on your keyboard &amp; pet the cat) →</a></strong>
-      <br/>
-      <sub>3D &amp; 2D toggle · 3D collar &amp; headset · 360° orbit · 6 cats + 🐳 BigFish · 65%/108-key · Dual orientation · Customizable tail keys · Password guard · 20%–150% scale</sub>
-    </td>
-    <td align="center" width="46%" valign="top">
-      <a href="https://qianyi.one/kurocat/?lang=en#whale-demo" target="_blank" rel="noopener">
-        <img src="docs/whale-demo.webp" alt="KuroCat 🐳 BigFish (whale-girl) 14s vertical demo video" width="272" />
-      </a>
-      <br/>
-      <strong>🐳 <a href="https://qianyi.one/kurocat/?lang=en#whale-demo">Watch 1080×1920 60fps Demo Video with Audio →</a></strong>
-      <br/>
-      <sub>
-        3-limb mouse + typing + whale-tail slaps → speed-reactive blush &amp; happy laugh → hands-over-eyes password privacy<br/>
-        📥 <a href="https://qianyi.one/kurocat/media/whale-douyin-14s.mp4">Direct MP4 Mirror</a> · <a href="https://github.com/qianyiai/kurocat/releases/download/v4.7.0/KuroCat-whale-demo-14s.mp4">GitHub Original</a>
-      </sub>
-    </td>
-  </tr>
-</table>
-
-## 📥 Direct Downloads (Windows / Win7 / macOS / Linux)
-
-Visit [Releases](https://github.com/qianyiai/kurocat/releases) or grab the latest **`v5.1.0`** installers below (featuring **✨ 3D Volumetric Figurine Mode & 🎨 2D Classic Hand-Drawn dual engine (3D default)**, **2D/3D plush arm proportions & coat-blending upgrade**, **optional 3D collar bells & gaming headphones with automatic PC game detection (both off by default)**, **1:1 MCP AI `spots[]` custom fur in 3D & 2D**, **28s anti-1px-jitter auto-sleep**, **unclamped top-of-screen free dragging**, **4 tail-patting modes + keycap picker**, **floating side menu**, **built-in OBS transparent Browser Source**, **password privacy guard**, and **in-app auto-update**):
-
-- **🪟 Windows 10 / 11 (65% Installer · `v5.1.0`)**: [**`KuroCat-5.1.0-x64-setup.exe`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-5.1.0-x64-setup.exe) (2.15 MB) | [**Fast Mirror**](https://qianyi.one/kurocat/?lang=en#download)
-  - Defaults to the 65% mechanical keyboard and creates Desktop, Start Menu, and Uninstaller entries. Switch anytime via right-click or system tray to **108-key full-size**, **🐳 BigFish**, **OBS transparent source**, or **Check for Updates**.
-  - **Tips & FAQ**:
-    - **Browser "isn't commonly downloaded" / Windows SmartScreen prompt**: KuroCat is 100% open-source without a commercial EV code-signing certificate.
-      - **Edge**: Hover the download → click **`···`** → **Keep** → click the arrow **`▾` (Show more)** next to Delete → **Keep anyway**.
-      - **Chrome**: Press `Ctrl + J` → **Keep dangerous file** → **Keep anyway**.
-      - **SmartScreen blue dialog**: Click **More info** → **Run anyway**.
-    - On stripped Win10 / LTSC builds missing `WebView2 Runtime`, install Microsoft's official 1.8 MB bootstrapper (Run as Administrator): [`MicrosoftEdgeWebview2Setup.exe`](https://go.microsoft.com/fwlink/p/?LinkId=2124703).
-    - **Fullscreen Games / Admin Elevation / OBS Streaming**: Features a non-focus-stealing topmost Z-order guard for borderless & FSO games (enable **Lock Click-Through** and hold `Alt` anytime to move/right-click). If a game runs elevated, right-click the tray icon → **Restart as Administrator**. For OBS streaming without chroma-key, right-click → **Copy OBS Transparent Source URL** (`http://127.0.0.1:27421/obs`, supports **OBS-Only Mode** + synced password privacy). For kernel anti-cheat games (e.g. Valorant), use tray → **Pause Hook & Hide (Anti-Cheat Safe Mode)**.
-- **🖥️ Windows 7 SP1 (64-bit Dedicated Portable · `v5.1.0`)**: [**`KuroCat-v5.1.0-win7-x64-portable.zip`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-win7-x64-portable.zip) (178.94 MB) | [**Fast Mirror**](https://qianyi.one/kurocat/releases/v5.1.0/KuroCat-v5.1.0-win7-x64-portable.zip)
-  - Native PE 6.01 build (zero Win8/Win10 DLL imports), bundles Microsoft's final Win7 offline **WebView2 109.0.1518.78** runtime, and uses native Win7 **256-level per-pixel anti-aliased `UpdateLayeredWindow`** compositing (zero white box with or without Aero). Extract all files and run `KuroCat.exe` alongside `WebView2Runtime`.
-- **🍎 macOS 10.15 Catalina+ (Apple Silicon M1–M4 & Intel Universal · `v5.1.0`)**: [**`KuroCat-v5.1.0-macos-universal.dmg`**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-macos-universal.dmg) (5.93 MB) | [**Fast Mirror**](https://qianyi.one/kurocat/releases/v5.1.0/KuroCat-v5.1.0-macos-universal.dmg)
-  - Open `.dmg` and drag `KuroCat.app` into **Applications**. Includes 3D/2D switcher, 65%/108-key layouts, and all 7 skins.
-  - **First Launch (unsigned open-source app)**: If Gatekeeper warns "cannot be verified" or "damaged", run `xattr -cr /Applications/KuroCat.app` once in Terminal (future in-app updates handle this automatically).
-  - **Input Permissions**: Enable `KuroCat` in **System Settings → Privacy & Security → Accessibility** and **Input Monitoring** (takes effect immediately; compatible with Karabiner-Elements).
-  - **macOS Stdio MCP Path**: `/Applications/KuroCat.app/Contents/MacOS/KuroCat` with args `["--mcp"]`, or connect to `http://127.0.0.1:27420/mcp` while running.
-- **🐧 Linux / Ubuntu 22.04+ / Debian 12+ / KylinOS V11+ / UOS (`v5.1.0`)**:
-  - **x86_64**: [**`.deb` (2.38 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-linux-amd64.deb) · [**`.AppImage` (77.52 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-linux-amd64.AppImage)
-  - **ARM64**: [**`.deb` (2.34 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-linux-arm64.deb) · [**`.AppImage` (75.69 MB)**](https://github.com/qianyiai/kurocat/releases/download/v5.1.0/KuroCat-v5.1.0-linux-arm64.AppImage)
-  - **Requirements**: Built on Tauri v2 / Ubuntu 22.04 baseline; requires **`glibc >= 2.34`** (`.deb` requires **`libwebkit2gtk-4.1-0`** and **`libayatana-appindicator3-1`**; not compatible with Ubuntu 20.04 / `glibc 2.31` systems such as KylinOS V10 SP1).
-  - Dynamically loads X11 `XRecord` for rootless global input (with automatic `evdev` fallback on Wayland). Fast mirrors available at [`https://qianyi.one/kurocat/?lang=en#linux-download`](https://qianyi.one/kurocat/?lang=en#linux-download).
-
-## ✨ Core Features
+- **Round-cheek silhouette**: a new `BODY_SLICES_ROUND` outline (widest slice 63.5), rounder and softer than the stock black cat
+- **Thin leather cord + gold ball bell**: brick-red cord `#6e2f21` (`COLLAR_2D_STRAP_THICK 3.4`, tapering to fine points at both ends) with a radial-gradient gold bell (radius 6.2, flat oval sound hole), replacing the old wide ribbon + dome bell
+- **Single-stroke solid paws**: both front legs are now one continuous `drawSeatedLegPath()`, so no more "two floating lines" on dark fur
+- **Keycap-coloured headphones**: earcups recoloured like white keycaps, boom mic removed; only one note floats while playing, drawn on two alternating lanes with a crowding guard so notes never stack
+- **Its own menu entry**: tray menu gets a `breed_bellblack` item ("铃铛小黑（圆脸·皮绳铃）"), and the in-app "cat appearance" menu lists the same entry; selecting it shows `KuroCat 铃铛小黑` in the menu header and persists as `catBreed = bellblack` in `settings.json`, surviving restarts
 
 <table>
   <tr>
-    <td align="center" width="50%">
-      <img src="website/public/assets/showcase-108key.webp" alt="65% Compact / 108-Key Full-Size × Cat-Facing / Viewer-Facing Dual Perspective" />
-      <br/><sub>65% Compact / 108-Key Full-Size × Cat-Facing / Viewer-Facing Perspective</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="website/public/assets/showcase-mouse.webp" alt="Independent L/R Mouse Highlight + Built-in Auto Updater" />
-      <br/><sub>Independent L/R Mouse Button Highlights + In-App Auto Updater</sub>
-    </td>
+    <td align="center" width="50%"><img src="docs/2d/paw.webp" width="330" alt="Support paw while the mouse is held" /><br/><sub>Mouse held: the support paw gets a full solid outline instead of two floating lines</sub></td>
+    <td align="center" width="50%"><img src="docs/2d/desktop.webp" width="300" alt="Running on the desktop" /><br/><sub>On the real desktop: round cheeks, cord + gold bell, single-stroke paw, 2D keyboard</sub></td>
   </tr>
 </table>
 
-- **✨ 3D Volumetric Figurine & 🎨 2D Classic Dual Engine + Optional Accessories**:
-  - Defaults to **3D Volumetric Figurine Mode** powered by Three.js with soft rim lighting, plush arm proportions, and smooth fur blending; switch to **2D Classic Hand-Drawn** anytime in one click via the right-click menu or system tray.
-  - **Optional 3D Collar Bells & Gaming Headset (both off by default)**: Pick from 4 collar colors (red, blue, pink, green) with a jingling bell, or enable the gaming headset with automatic PC game detection that puts it on and takes it off silently.
-- **7 Built-in Skins (6 Cats + 🐳 BigFish Whale-Girl) + Unlimited AI Custom Skins via MCP**:
-  - **🐈‍⬛ Black Cat** / **🐱 Ragdoll** / **🍊 Orange Tabby** / **🌸 Calico** / **🐄 Tuxedo** / **🤎 Siamese** / **🐳 BigFish (Whale-Girl)** (3-limb simultaneous mouse + typing + splashing whale-tail slaps, Live2D eye gaze tracking, typing-speed blush & joyful laugh). Switch seamlessly in 0.1s.
-  - **🐾 4 Customizable Tail-Patting Modes & On-Keyboard Picker**: Choose **Smart 3rd Hand** (paws handle normal typing; tail jumps in when both hands are busy or on fast Enter), **Custom Keys** (click any keycap right on the pet's keyboard or press physical keys to toggle, with non-clipping far-key arcs & presets), **Edge Only** (protects `WASD`), or **Wag Only**.
-  - **🙈 System-Level Password Privacy Guard**: Automatically detects password fields on Windows (UI Automation `CurrentIsPassword` + Win32 `ES_PASSWORD`) and macOS (`IsSecureEventInputEnabled` + `AXSecureTextField`). Real keystrokes are intercepted in Rust without forwarding — cats gently close their eyes, BigFish covers her eyes with both hands, and the keyboard & bubbles are masked.
-  - **🎥 Native OBS Transparent Browser Source**: Zero-overhead loopback server (`http://127.0.0.1:27421/obs`, off by default) for crystal-clear Alpha-channel streaming in OBS Studio without chroma-key, complete with **OBS-Only Mode** and synced password masking.
-  - **🤖 Built-in MCP Server (Create Your Cat with AI)**: No Node.js or Python needed. Share a photo of your real cat with **Claude Desktop / Cursor / Antigravity / Windsurf / Cline**, and AI creates a custom breed with markings, eye colors, and accent theme — hot-reloading onto your desktop in **0.4 seconds**!
-- **65% / 108-Key Layouts + Dual Perspective + Independent L/R/M Mouse**:
-  - Switch between **65% compact** and **108-key full-size** (full F1–F12, nav cluster, media keys, numpad with 2U `+` & `Num↵`) and between **Cat-Facing (180°)** and **Viewer-Facing (upright legends)** with synchronized mouse button orientation.
-  - Independent `L`, `R`, and middle/scroll highlights with contrasting colors, 3D press shadows, and `LMB`/`RMB` badges — supports holding both buttons simultaneously.
-- **240Hz Spring Alive-Cat Micro-Emotions & Petting Purr**:
-  - Staggered spring physics (eyes → ears → head → spine), fast-cursor **Curious wide pupils**, key-mash **Grumpy airplane ears + 3-beat tail desk-thump**, idle **Sleepy loaf with floating Zzz**, and back-and-forth head petting with real-time Web Audio purring.
-- **In-App Auto-Updater, Click-Through Lock & Multi-Display Pinning**:
-  - Silent GitHub Releases check with SHA-256 verification and one-click upgrade; smart click-through lock (`Alt` temporary unlock); per-monitor pinning on Windows & macOS plus macOS 13+ fullscreen space overlay.
+## 2. Music groove
 
-## 🤖 MCP Integration Guide (Design Your Cat with AI)
+When the system is playing music (`src-tauri/src/music_detect.rs`, confirmed by consecutive samples) the cat enters a groove state machine:
 
-KuroCat `v4.0.0+` ships with native **Stdio** and **Local Streamable HTTP (`127.0.0.1:27420`)** MCP servers built right into the single binary!
+- **Base groove**: head nod `beatSin*0.078 + beatHalf*0.026`, face sway `musicNodGain*beatHalf*3.6`, weight shift `+ musicGroove*sin(phase*0.5)*0.055`, tail swinging at half frequency (amplitude 6.4)
+- **Random one-shot gestures**: picked from the `enjoy / enjoy / ear / slowBlink / look / tail / tilt` pool every 2200–5200 ms, BPM randomised between 92 and 126 per session
+- **Never fights typing**: nod gain is multiplied by `(1 - min(1, typingHunch)*0.55)`, and ordinary idle fidgets are suppressed while `musicGroove < 0.15`
 
-### Quick Setup
-1. Launch `KuroCat`, right-click the pet → ensure **Enable MCP Server** is checked → click **Copy MCP Config**.
-2. Paste into your MCP client config (Claude Desktop / Cursor / Antigravity / Windsurf / Cline):
+<table>
+  <tr>
+    <td align="center" width="56%"><img src="docs/2d/music.webp" width="360" alt="Listening state: keycap headphones + single note" /><br/><sub>Headphones + a single note, no overlap</sub></td>
+    <td align="center" width="44%"><img src="docs/2d/groove.webp" width="420" alt="Six-frame groove sequence, real app" /><br/><sub>Six frames from the real app: head tilt, weight shifting side to side, tail following</sub></td>
+  </tr>
+</table>
 
-**Option A: Stdio Mode (Recommended — supported by all MCP clients)**
-```json
-{
-  "mcpServers": {
-    "kurocat": {
-      "command": "C:\\Users\\<YourUsername>\\AppData\\Local\\KuroCat\\KuroCat.exe",
-      "args": ["--mcp"]
-    }
-  }
-}
-```
+## 3. Eyes-shut bliss
 
-**Option B: Local Streamable HTTP Mode (connect while KuroCat is running)**
-```json
-{
-  "mcpServers": {
-    "kurocat": {
-      "url": "http://127.0.0.1:27420/mcp"
-    }
-  }
-}
-```
+- New `IdleFidget.kind = 'enjoy'` with fixed-time eyelids: **0.38 s shut, 0.45 s open**, total gesture duration randomised **2400–3300 ms**
+- Above 0.55 closure it switches to a "relaxed arc" eye branch, wired into both eye paths (built-in and custom skins via `isBlissClosed()`)
+- While closed, the nod is multiplied by another `(1 - enjoyEnv*0.45)`, plus a 0.042 lean and `targetGazeY -= 0.12*actEnv` — the cat visibly melts for a moment
 
-### Example Prompts
-- *"Use KuroCat MCP to create a British Shorthair blue cat with amber eyes and ice-blue keycaps, and switch to it right away."*
-- *"Look at this photo of my calico cat and design a custom KuroCat pet matching its fur patches and eye color!"*
-- *"Scale KuroCat to 85%, switch to the 108-key viewer-facing layout, and set tail keys to Enter and Space."*
+<p align="center">
+  <img src="docs/2d/enjoy.webp" width="620" alt="Eyes open vs. eyes shut bliss" /><br/>
+  <sub>Left: normal open eyes. Right: eyes-shut bliss (arc eyes + slight head lean)</sub>
+</p>
 
-### Built-in MCP Tools
-| Tool | Description |
-| --- | --- |
-| `list_cats` | List all built-in and custom skins plus the active skin ID |
-| `get_cat_schema` | Inspect full skin schema, 6 patterns (`solid`/`bicolor`/`tuxedo`/`tabby`/`calico`/`siamese`), spot coordinates & presets |
-| `upsert_cat` | Create or update any custom cat skin with instant live hot-reload |
-| `switch_cat` | Switch active desktop pet by ID |
-| `delete_cat` | Delete a custom skin (or restore a built-in skin) |
-| `get_settings` / `update_settings` | Read or live-update scale, layout, orientation, tail-key mode/keys, bubbles, purr sound, always-on-top, click-through lock, OBS source & autostart |
+## 4. Feel fixes
 
-Custom skins are stored at:
-- **Windows**: `%APPDATA%\kuro-cat-pet\cats.json`
-- **macOS**: `~/Library/Application Support/kuro-cat-pet/cats.json`
+- **Support paw outline**: `drawCustomPlumpArm` takes a `supportLook` flag; on dark fur it falls back to `legLineColor` and closes the paw-ball arc
+- **Headband follow**: `drawHeadphonesBack / drawHeadphonesFront` add `turnShift = faceTurnX*0.125`, so the band and earcups track lateral head turns by the same ratio
+- **Collar tilt damped**: `collarAnchor()` now attenuates the spine-axis tilt by lean amount (`leanDamp = 1 - min(1,|spineLean|)*0.66`). In the "touching the mouse" pose the cord angle drops from **-17.5°** to **-6.9°**, while idle stays at 0° and light typing sway is unaffected
 
-## 🛠️ Build from Source
+<p align="center">
+  <img src="docs/2d/collar.webp" width="640" alt="Collar tilt before and after" /><br/>
+  <sub>Same mouse pose: before the fix (about -17.5°) on top, after (about -6.9°) below</sub>
+</p>
 
-Prerequisites: Windows 10/11 or macOS 11+, Node.js 18+, Rust toolchain (`cargo`).
+## 5. Menu and settings
+
+- `src-tauri/src/tray.rs` gains the `breed_bellblack` item and event handler; `lib.rs` builds the list from `all_cats()`, so the embedded menu (`menuMain.ts`) picks up the "铃铛小黑" entry automatically
+- `src-tauri/src/music_detect.rs` adds a `get_music_active` command plus the playback polling loop — a coarse "is music playing" check that never reads track metadata
+- Version `5.1.0 → 5.2.0` in three places: `package.json`, `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`
+
+<p align="center">
+  <img src="docs/2d/menu.webp" width="330" alt="Bellblack entry in the menu" /><br/>
+  <sub>A standalone entry under "cat appearance"; selecting it highlights it and switches the menu header to `KuroCat 铃铛小黑`</sub>
+</p>
+
+## 6. Build and run
+
+Prerequisites: macOS 11+ / Windows 10+, Node.js 18+, a Rust toolchain.
 
 ```bash
-git clone https://github.com/qianyiai/kurocat.git
+git clone https://github.com/coocv/kurocat.git -b feat/bellblack-2d
 cd kurocat
 npm install
-npm run tauri:dev      # Live hot-reload development
-npm run tauri:build    # Production release bundle & installer
+npm run tauri:dev      # local dev
+npm run tauri:build    # release build
 ```
 
-## 📈 Live Growth
+On macOS, keeping the Accessibility / Input Monitoring grants across versions requires signing with one **fixed** self-signed certificate: leave `signingIdentity` out of `tauri.conf.json` and sign after packaging
 
-<a href="https://qianyi.one/kurocat/?lang=en#growth">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://qianyi.one/kurocat/api/growth-chart?theme=dark&amp;lang=en" />
-    <source media="(prefers-color-scheme: light)" srcset="https://qianyi.one/kurocat/api/growth-chart?theme=light&amp;lang=en" />
-    <img alt="KuroCat Live Downloads and GitHub Stars Growth Chart" src="https://qianyi.one/kurocat/api/growth-chart?theme=dark&amp;lang=en" width="100%" />
-  </picture>
-</a>
+```bash
+codesign --force --deep --sign "your-self-signed-cert" src-tauri/target/release/bundle/macos/KuroCat.app
+```
 
-> 📡 Live-synced cumulative downloads and GitHub Stars (auto-adapts to GitHub dark/light themes). [Explore the interactive dual-axis chart on the website →](https://qianyi.one/kurocat/?lang=en#growth)
+A self-signed certificate cannot replace Apple notarisation, so the first launch still needs approval under Privacy & Security.
 
-## ☕ Support & Donate
+## 7. Scope and known limits
 
-KuroCat is completely free and open-source under the MIT License. If this tiny desktop cat has brightened your coding, work, or streams, consider starring the repo ⭐ or buying the author a coffee:
+- **2D only** — no change to the 3D engine (`catEngine3d.ts`)
+- The new character is a built-in breed (`bellblack`), not a `cats.json` custom skin; turning it into a pure custom skin would require parameterising the collar and headphone drawing branches
+- If a custom skin in your `cats.json` used spots to fake a collar, those old patches are not removed automatically — delete them by hand
+- Build artefacts such as `src-tauri/gen/schemas` are gitignored
 
-- **ETH / BNB / USDT / USDC (EVM Address)**  
-  Supported networks: `Ethereum (ERC-20)` · `BNB Smart Chain (BEP-20)` · `Base` · `Arbitrum`
-  ```text
-  0x40995b4c9ad8cd4356417a34ab94fa20d5844617
-  ```
+## 8. Upstream and licence
 
-## 📄 License & Credits
-
-Released under the [MIT License](LICENSE).
-
-- The built-in **🐳 BigFish (whale-girl)** skin uses runtime sprite assets derived from the MIT-licensed project [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) (with reference to [QCYTSN/dsh-dafeiyu](https://github.com/QCYTSN/dsh-dafeiyu)). See `src/assets/dafeiyu/LICENSE-MIT.txt` for full license details.
+Upstream project and docs: [qianyiai/kurocat](https://github.com/qianyiai/kurocat), MIT License (see [LICENSE](LICENSE)). This branch only touches 2D rendering and characters; all upstream attribution and licence notices are retained.

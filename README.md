@@ -1,5 +1,11 @@
 # 🐈‍⬛ KuroCat · 2D 定制分支（`feat/bellblack-2d`）
 
+<p align="center">
+  <strong>🇨🇳 简体中文</strong> &nbsp;|&nbsp;
+  <a href="./README.en.md">🇺🇸 English</a> &nbsp;|&nbsp;
+  <a href="./README.ja.md">🇯🇵 日本語</a>
+</p>
+
 这是 [qianyiai/kurocat](https://github.com/qianyiai/kurocat) 的个人定制分支，基于上游 **5.1.0**（本分支版本号改为 **5.2.0**）。上游的键鼠跟随、透明置顶窗口、托盘、密码防偷窥、MCP、3D 引擎等功能全部保留，本文只记录**这个分支新增和修改了什么**。
 
 改动全部落在 **2D 引擎**（`src/catEngine.ts` / `src/catSkins.ts` / `src/main.ts`，以及 `src-tauri` 的菜单与音乐检测），不涉及 3D。
