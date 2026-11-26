@@ -5800,7 +5800,9 @@ export class KuroCatEngine {
     outlineGrad.addColorStop(1.0, colorWithAlpha(outlineCol, 0.35));
 
     ctx.strokeStyle = outlineGrad;
-    ctx.lineWidth = 1.6;
+    ctx.lineWidth = s.outlineColor
+      ? s.outlineWidth / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
+      : 1.6;
     ctx.beginPath();
     ctx.moveTo(elbowX + sign * 8, elbowY - 16);
     ctx.quadraticCurveTo(elbowX + sign * 4, elbowY + 12, cp.x + sign * 2, cp.y + 10);
@@ -6018,6 +6020,7 @@ export class KuroCatEngine {
       innerTopX,
       innerBotX,
       paw.idleWeight,
+      s.outlineColor ? s.outlineWidth / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840)) : 1.5,
     );
   }
 
