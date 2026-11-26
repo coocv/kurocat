@@ -2913,7 +2913,10 @@ export class KuroCatEngine {
         ctx.shadowBlur = 4;
         ctx.shadowOffsetY = 1.5;
         ctx.strokeStyle = s.outlineColor;
-        ctx.lineWidth = tailW + 3.4;
+        // Same visible rim as the body: the backing stroke is widened by 2x the rim width
+        const rimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
+        const rimW = s.outlineWidth / rimScale;
+        ctx.lineWidth = tailW + rimW * 2;
         ctx.beginPath();
         ctx.moveTo(startX, startY);
         ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
