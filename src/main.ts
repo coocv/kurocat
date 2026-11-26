@@ -843,8 +843,11 @@ async function bootstrap(): Promise<void> {
     ]);
     settings = loadedSettings;
     lastKnownLockState = settings.clickThroughLocked;
-    if (Array.isArray(loadedCats) && loadedCats.length > 0) {
-      catList = loadedCats;
+    if (Array.isArray(loadedCats)) {
+      // Built-in breeds stay defined by catSkins.ts (single source of truth for their styling);
+      // the backend only contributes user-created cats.
+      const custom = loadedCats.filter((c) => !c.builtin);
+      catList = [...DEFAULT_BUILTIN_CATS, ...custom];
     }
     if (loadedVer) {
       appVersion = loadedVer;
@@ -951,7 +954,7 @@ async function bootstrap(): Promise<void> {
 
   await listen<CatSkinConfig[]>('kuro-cats', (ev) => {
     if (Array.isArray(ev.payload) && ev.payload.length > 0) {
-      catList = ev.payload;
+      catList = [...DEFAULT_BUILTIN_CATS, ...ev.payload.filter((c) => !c.builtin)];
       syncMenuUI();
     }
   });

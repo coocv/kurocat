@@ -20,6 +20,8 @@ export interface CatSkinConfig {
   furColor: string;
   furSecondaryColor?: string;
   outlineColor?: string;
+  /** Stroke width of the outer rim, in canvas units. Defaults to 1.8. */
+  outlineWidth?: number;
   legLineColor?: string;
 
   pattern?: CatPattern;
@@ -74,6 +76,7 @@ export interface ResolvedSkin {
   furColor: string;
   furSecondaryColor: string;
   outlineColor: string | null;
+  outlineWidth: number;
   legLineColor: string;
   pattern: CatPattern;
   maskColor: string | null;
@@ -131,6 +134,7 @@ export function resolveCustomSkin(raw: CatSkinConfig): ResolvedSkin {
   const pattern: CatPattern = raw.pattern || 'solid';
   const defaultOutline = darkBase ? null : '#524840';
   const outlineColor = raw.outlineColor !== undefined ? (raw.outlineColor || null) : defaultOutline;
+  const outlineWidth = raw.outlineWidth ?? 1.8;
   const pawColor = raw.pawColor || (pattern === 'tuxedo' ? '#faf9f5' : fur);
   const armColor = raw.armColor || fur;
   const pawIsLight = isLightColor(pawColor);
@@ -143,6 +147,7 @@ export function resolveCustomSkin(raw: CatSkinConfig): ResolvedSkin {
     furColor: fur,
     furSecondaryColor: raw.furSecondaryColor || fur,
     outlineColor,
+    outlineWidth,
     legLineColor:
       raw.legLineColor || (darkBase ? 'rgba(214, 218, 224, 0.62)' : 'rgba(82, 72, 64, 0.62)'),
     pattern,
@@ -231,7 +236,8 @@ export const DEFAULT_BUILTIN_CATS: CatSkinConfig[] = [
     faceShape: 'round',
     furColor: '#141314',
     legLineColor: 'rgba(210, 212, 216, 0.64)',
-    outlineColor: 'rgba(228, 234, 244, 0.74)',
+    outlineColor: 'rgba(228, 234, 244, 0.50)',
+    outlineWidth: 1.0,
     eyeColorTop: '#fbcb45',
     eyeColorBottom: '#fbcb45',
     squintColor: '#fbcb45',
