@@ -4962,7 +4962,8 @@ export class KuroCatEngine {
     // 1) Grounded hind paws always rendered in seated posture (no idle disappear/blink; Fixes #1)
     ctx.fillStyle = s.pawColor;
     ctx.strokeStyle = s.pawOutlineColor || s.outlineColor || 'transparent';
-    ctx.lineWidth = s.outlineWidth;
+    const hindRimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
+    ctx.lineWidth = s.outlineWidth / hindRimScale;
     for (const [fx, fy, rx, ry] of [
       [basePt.x - 42, basePt.y - 3, 14.5, 11.5],
       [basePt.x + 32, basePt.y - 1, 15.0, 11.5],
