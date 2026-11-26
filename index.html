@@ -23,7 +23,9 @@ button.on{background:#fbf0d8;border-color:#e0bd7a;color:#8a5b00}
   #stage{margin:4px auto 14px}
 }
 
-</style>  <script type="module" crossorigin src="./assets/index-CKAirCK3.js"></script>
+body.mini #c{transform:scale(0.25)!important;transform-origin:top left}
+body.mini #stage{width:210px!important;height:220px!important;overflow:hidden;outline:1px dashed #999}
+</style>  <script type="module" crossorigin src="./assets/index-BQSwoANc.js"></script>
 </head><body>
 <div id="stage"><canvas id="c"></canvas></div>
 <div id="panel">
@@ -32,11 +34,17 @@ button.on{background:#fbf0d8;border-color:#e0bd7a;color:#8a5b00}
     <input id="tilt" type="range" min="-0.45" max="0.45" step="0.01" value="0"></div>
   <div class="row"><label>横向扭头 <b id="turnVal">自动</b></label>
     <input id="turn" type="range" min="-10" max="10" step="0.5" value="0"></div>
+  <div class="row"><label>描边粗细 <b id="owVal">3.2</b></label>
+    <input id="ow" type="range" min="0" max="5" step="0.2" value="3.2"></div>
+  <div class="row"><label>描边不透明度 <b id="oaVal">0.82</b></label>
+    <input id="oa" type="range" min="0.30" max="1.00" step="0.02" value="0.82"></div>
   <div class="btns">
     <button id="auto">恢复自动</button>
     <button id="reset">归零视角</button>
     <button id="music">音乐 OFF</button>
     <button id="press">按住鼠标</button>
+    <button id="mini">实际窗口大小</button>
+    <button id="rimOff">关闭描边</button>
   </div>
   <div class="hint">在猫咪身上按住拖动：左右拖＝扭头，上下拖＝歪头；空格＝归零</div>
 </div></body></html>
