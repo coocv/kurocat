@@ -4250,6 +4250,19 @@ export class KuroCatEngine {
           cg.fill();
           cg.restore();
 
+          // Light outer rim: same visible thickness as the body contour so the deck
+          // stays readable on dark desktops.
+          const kbRimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
+          const kbRimW = this.customSkin?.outlineColor
+            ? this.customSkin.outlineWidth / kbRimScale
+            : 2.4 / kbRimScale;
+          cg.save();
+          cg.strokeStyle = 'rgba(214, 220, 231, 0.55)';
+          cg.lineWidth = kbRimW;
+          this.trapezoidPath(cg, topHalfW + 1.2, botHalfW + 1.2, -halfH - 1, halfH + 1, 7.5);
+          cg.stroke();
+          cg.restore();
+
           cg.fillStyle = '#24262c';
           cg.strokeStyle = '#363840';
           cg.lineWidth = 1.1;
@@ -4293,7 +4306,9 @@ export class KuroCatEngine {
       // Light outer rim keeps the dark keyboard deck readable on dark desktops
       ctx.save();
       ctx.strokeStyle = 'rgba(214, 220, 231, 0.55)';
-      ctx.lineWidth = 2.4;
+      ctx.lineWidth = this.customSkin?.outlineColor
+        ? this.customSkin.outlineWidth / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
+        : 2.4;
       this.trapezoidPath(ctx, topHalfW + 1.2, botHalfW + 1.2, -halfH - 1, halfH + 1, 7.5);
       ctx.stroke();
       ctx.restore();
@@ -5661,7 +5676,7 @@ export class KuroCatEngine {
     if (!isSmear && edgeColor) {
       // Keep the moving arm's hairline consistent with the resting legs / body rim
       const rimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
-      ctx.lineWidth = s.outlineColor ? (s.outlineWidth * 0.66) / rimScale : 1.65;
+      ctx.lineWidth = s.outlineColor ? (s.outlineWidth * 0.85) / rimScale : 1.65;
       ctx.lineCap = 'round';
       const startFrac = withCrease ? 0.22 : 0.16;
       for (const sgn of [-1, 1]) {
@@ -5803,7 +5818,7 @@ export class KuroCatEngine {
 
     ctx.strokeStyle = outlineGrad;
     ctx.lineWidth = s.outlineColor
-      ? (s.outlineWidth * 0.66) / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
+      ? (s.outlineWidth * 0.85) / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
       : 1.6;
     ctx.beginPath();
     ctx.moveTo(elbowX + sign * 8, elbowY - 16);
@@ -5867,7 +5882,7 @@ export class KuroCatEngine {
     ctx.strokeStyle = color;
     const pawSkin = this.customSkin;
     const pawRimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
-    ctx.lineWidth = pawSkin?.outlineColor ? (pawSkin.outlineWidth * 0.66) / pawRimScale : 1.5;
+    ctx.lineWidth = pawSkin?.outlineColor ? (pawSkin.outlineWidth * 0.85) / pawRimScale : 1.5;
     ctx.lineCap = 'butt';
     frontEdge();
     ctx.stroke();
@@ -6025,7 +6040,7 @@ export class KuroCatEngine {
       innerBotX,
       paw.idleWeight,
       s.outlineColor
-        ? (s.outlineWidth * 0.66) / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
+        ? (s.outlineWidth * 0.85) / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
         : 1.5,
     );
   }
