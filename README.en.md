@@ -21,6 +21,7 @@ A round-faced black cat wearing a thin leather cord with a small gold bell.
 - **Round-cheek silhouette**: a `BODY_SLICES_ROUND` outline — wide, soft face with full cheeks
 - **Fine cord + gold ball bell**: brick-red cord `#6e2f21` tapering to fine points at both ends; a radial-gradient gold bell with a flat oval sound hole
 - **Single-stroke paws**: both front legs drawn as one continuous stroke, with full outline and paw-ball arc even on dark fur
+- **Dark-wallpaper rim**: the cat and the keyboard deck each carry a 1 px pale-grey contour (`outlineWidth 1.0`, `rgba(228,234,244,0.50)`), width-compensated down to the small desktop window so the shape never dissolves into a dark wallpaper
 - **Keycap-coloured headphones**: white-keycap earcups, no boom mic; while music plays a hand-drawn note floats overhead (single note or beamed double note)
 - **Its own menu entry**: listed as "铃铛小黑" in both the tray menu and the in-app appearance menu; selecting it persists `catBreed` in `settings.json` and survives restarts
 
