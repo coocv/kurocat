@@ -5659,7 +5659,9 @@ export class KuroCatEngine {
     const edgeColor =
       s.pawOutlineColor || s.outlineColor || (supportLook && s.isDarkBase ? s.legLineColor : null);
     if (!isSmear && edgeColor) {
-      ctx.lineWidth = 1.65;
+      // Keep the moving arm's hairline consistent with the resting legs / body rim
+      const rimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
+      ctx.lineWidth = s.outlineColor ? (s.outlineWidth * 0.66) / rimScale : 1.65;
       ctx.lineCap = 'round';
       const startFrac = withCrease ? 0.22 : 0.16;
       for (const sgn of [-1, 1]) {
@@ -5863,7 +5865,9 @@ export class KuroCatEngine {
     // rim: the identical curve, so it hugs the paw edge end to end. Butt caps + a few extra
     // degrees make both ends tuck UNDER the leg lines, so there is no cap bump at the joint.
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5;
+    const pawSkin = this.customSkin;
+    const pawRimScale = Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840));
+    ctx.lineWidth = pawSkin?.outlineColor ? (pawSkin.outlineWidth * 0.66) / pawRimScale : 1.5;
     ctx.lineCap = 'butt';
     frontEdge();
     ctx.stroke();
