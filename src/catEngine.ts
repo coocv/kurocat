@@ -4257,7 +4257,7 @@ export class KuroCatEngine {
             ? this.customSkin.outlineWidth / kbRimScale
             : 2.4 / kbRimScale;
           cg.save();
-          cg.strokeStyle = 'rgba(214, 220, 231, 0.55)';
+          cg.strokeStyle = 'rgba(214, 220, 231, 0.36)';
           cg.lineWidth = kbRimW;
           this.trapezoidPath(cg, topHalfW + 1.2, botHalfW + 1.2, -halfH - 1, halfH + 1, 7.5);
           cg.stroke();
@@ -4305,7 +4305,7 @@ export class KuroCatEngine {
 
       // Light outer rim keeps the dark keyboard deck readable on dark desktops
       ctx.save();
-      ctx.strokeStyle = 'rgba(214, 220, 231, 0.55)';
+      ctx.strokeStyle = 'rgba(214, 220, 231, 0.36)';
       ctx.lineWidth = this.customSkin?.outlineColor
         ? this.customSkin.outlineWidth / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
         : 2.4;
@@ -6028,7 +6028,7 @@ export class KuroCatEngine {
 
     this.drawSeatedLegPath(
       ctx,
-      s.legLineColor,
+      s.outlineColor || s.legLineColor,
       s.furSecondaryColor || s.furColor,
       topSp,
       midSp,
@@ -6040,7 +6040,7 @@ export class KuroCatEngine {
       innerBotX,
       paw.idleWeight,
       s.outlineColor
-        ? (s.outlineWidth * 0.85) / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
+        ? s.outlineWidth / Math.min(1, Math.max(0.22, ctx.canvas.clientWidth / 840))
         : 1.5,
     );
   }
